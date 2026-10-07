@@ -1,0 +1,6 @@
+{
+  "name": "Mencongak Master - Game Aritmatika Kilat & Leaderboard",
+  "description": "Aplikasi edukasi mencongak interaktif untuk Android dengan sistem poin, papan peringkat real-time, trik matematika cepat, dan panduan monetisasi Play Store.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "com.mencongak.masterpro",
+  "name": "Mencongak Master Pro",
+  "short_name": "Mencongak Pro",
+  "description": "Latihan Aritmatika Mental & Hitung Cepat Kilat",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#fbbf24",
+  "orientation": "portrait",
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "com.mencongak.masterpro"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
