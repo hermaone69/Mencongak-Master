@@ -9,7 +9,6 @@ import { getTranslation, getLocalizedShopItem, getLocalizedDiscountBadge, getLoc
 
 interface ShopScreenProps {
   onOpenCertificate: () => void;
-  onOpenGuide?: () => void;
 }
 
 export const ShopScreen: React.FC<ShopScreenProps> = ({

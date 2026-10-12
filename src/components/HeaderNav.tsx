@@ -32,7 +32,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({ onOpenProfile, onOpenShop 
   );
 
   return (
-    <div className="w-full bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-3 py-2.5 flex items-center justify-between shrink-0 z-30 select-none relative">
+    <div className="w-full bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-3 py-2.5 pt-safe flex items-center justify-between shrink-0 z-30 select-none relative">
       {/* Player Profile & Level */}
       <button
         onClick={() => {

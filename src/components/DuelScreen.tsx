@@ -452,7 +452,7 @@ export const DuelScreen: React.FC = () => {
   // 1. ARENA BERTANDING REAL-TIME
   if (isDueling && currentQuestion && !duelWinner) {
     return (
-      <div className="flex-1 flex flex-col justify-between p-3 sm:p-4 bg-slate-950 text-slate-100 select-none relative overflow-hidden">
+      <div className="flex-1 flex flex-col justify-between p-3 sm:p-4 bg-slate-950 text-slate-100 select-none relative overflow-y-auto">
         {/* Top Navigation & Surrender Button */}
         <div className="flex items-center justify-between z-10">
           <button
@@ -563,10 +563,24 @@ export const DuelScreen: React.FC = () => {
             </div>
           )}
 
-          <div className="w-full max-w-sm bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-2xl">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-2">
-              {t.duelTopic} · {currentQuestion.operation.toUpperCase()}
-            </span>
+          <div className="w-full max-w-sm bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-7 flex flex-col items-center justify-center text-center shadow-2xl">
+            <div className="w-full flex items-center justify-between mb-2">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
+                {t.duelTopic} · {currentQuestion.operation.toUpperCase()}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playTap();
+                  setIsScratchpadOpen(true);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white rounded-xl text-[11px] font-bold cursor-pointer transition-all active:scale-95 shadow-sm"
+                title={t.scratchpad}
+              >
+                <PenTool className="w-3 h-3" />
+                <span>{t.scratchpad}</span>
+              </button>
+            </div>
             <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white font-mono-math tracking-tight my-2">
               {currentQuestion.questionText.replace(' = ?', '')} = ?
             </div>
@@ -601,6 +615,7 @@ export const DuelScreen: React.FC = () => {
         <ScratchpadCanvas
           isOpen={isScratchpadOpen}
           onClose={() => setIsScratchpadOpen(false)}
+          questionText={currentQuestion?.questionText}
         />
       </div>
     );

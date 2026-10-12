@@ -320,7 +320,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               onClose();
               onOpenCertificate();
             }}
-            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
           >
             <Award className="w-4 h-4" />
             <span>{language === 'id' ? 'Buka E-Sertifikat Prestasi Mencongak' : 'Open Achievement E-Certificate'}</span>

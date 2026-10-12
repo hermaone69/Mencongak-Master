@@ -24,7 +24,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab })
   ];
 
   return (
-    <nav className="w-full bg-slate-900/95 backdrop-blur-md border-t border-slate-800/90 px-1 py-1 shrink-0 z-30 select-none">
+    <nav className="w-full bg-slate-900/95 backdrop-blur-md border-t border-slate-800/90 px-1 py-1 pb-safe shrink-0 z-30 select-none">
       <div className="grid grid-cols-5 items-center h-14">
         {tabs.map(tab => {
           const Icon = tab.icon;

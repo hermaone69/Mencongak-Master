@@ -13,19 +13,16 @@ import { TricksScreen } from './components/TricksScreen';
 import { DuelScreen } from './components/DuelScreen';
 import { LeaderboardScreen } from './components/LeaderboardScreen';
 import { ShopScreen } from './components/ShopScreen';
-import { GuideModal } from './components/GuideModal';
 import { CertificateModal } from './components/CertificateModal';
 import { ProfileModal } from './components/ProfileModal';
 
 function MainContent() {
   const [activeTab, setActiveTab] = useState<TabType>('play');
-  const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
   const [isCertificateOpen, setIsCertificateOpen] = useState<boolean>(false);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
 
   return (
     <AndroidFrame
-      onOpenGuide={() => setIsGuideOpen(true)}
       onOpenShop={() => setActiveTab('shop')}
     >
       {/* Top Bar inside Android Frame */}
@@ -51,7 +48,6 @@ function MainContent() {
         {activeTab === 'shop' && (
           <ShopScreen
             onOpenCertificate={() => setIsCertificateOpen(true)}
-            onOpenGuide={() => setIsGuideOpen(true)}
           />
         )}
       </div>
@@ -60,11 +56,6 @@ function MainContent() {
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Modals */}
-      <GuideModal
-        isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
-      />
-
       <CertificateModal
         isOpen={isCertificateOpen}
         onClose={() => setIsCertificateOpen(false)}

@@ -2,15 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   Zap, Heart, Trophy, Sparkles, RefreshCw, Volume2, 
-  HelpCircle, ChevronRight, CheckCircle2, XCircle, 
-  Flame, Award, ArrowLeft, Clock, ShieldAlert, BookOpen, PenTool
+  ChevronRight, CheckCircle2, XCircle, 
+  Flame, Award, ArrowLeft, Clock, ShieldAlert, PenTool
 } from 'lucide-react';
 import { DifficultyLevel, GameMode, MathOperation, Question } from '../types';
 import { generateQuestion } from '../utils/mathGenerator';
 import { useGame } from '../context/GameContext';
 import { sounds } from '../utils/audio';
 import { ScratchpadCanvas } from './ScratchpadCanvas';
-import { DifficultyInfoModal } from './DifficultyInfoModal';
 import { getTranslation } from '../utils/translations';
 
 interface PlayScreenProps {
@@ -44,7 +43,6 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
 
   // Modals state
   const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false);
-  const [isDifficultyInfoOpen, setIsDifficultyInfoOpen] = useState<boolean>(false);
   const [powerupToast, setPowerupToast] = useState<string | null>(null);
 
   // Selection state
@@ -305,7 +303,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
   // If in active gameplay screen
   if (isPlaying && currentQuestion) {
     return (
-      <div className="flex-1 flex flex-col justify-between p-3 bg-slate-950 text-slate-100 select-none relative overflow-hidden">
+      <div className="flex-1 flex flex-col justify-between p-3 bg-slate-950 text-slate-100 select-none relative overflow-y-auto">
         {/* Background glow when high combo */}
         {combo >= 3 && (
           <div className="absolute inset-0 bg-gradient-to-b from-amber-500/10 via-transparent to-transparent pointer-events-none animate-pulse" />
@@ -415,8 +413,23 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                 : 'border-slate-800 ring-1 ring-slate-700/50'
             }`}
           >
-            <div className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-2">
-              {language === 'id' ? 'Soal' : 'Question'} #{questionCount + 1} · {(level === 'sd_awal' ? t.diffSd13 : level === 'sd_lanjut' ? t.diffSd46 : level === 'smp' ? t.diffSmp : t.diffPro).toUpperCase()}
+            {/* Top row inside question card: Question number + Prominent Scratchpad button */}
+            <div className="w-full flex items-center justify-between mb-2">
+              <div className="text-[11px] sm:text-xs text-slate-400 uppercase tracking-wider font-semibold truncate">
+                {language === 'id' ? 'Soal' : 'Question'} #{questionCount + 1} · {(level === 'sd_awal' ? t.diffSd13 : level === 'sd_lanjut' ? t.diffSd46 : level === 'smp' ? t.diffSmp : t.diffPro).toUpperCase()}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playTap();
+                  setIsScratchpadOpen(true);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/40 hover:border-sky-400 text-sky-300 hover:text-white rounded-xl text-[11px] font-bold cursor-pointer transition-all active:scale-95 shadow-sm shrink-0 ml-2"
+                title={language === 'id' ? 'Buka Papan Coretan Hitung' : 'Open Scratchpad'}
+              >
+                <PenTool className="w-3.5 h-3.5" />
+                <span>{language === 'id' ? 'Coretan' : 'Scratchpad'}</span>
+              </button>
             </div>
 
             {/* Arithmetic Expression */}
@@ -445,19 +458,8 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           </div>
         </div>
 
-        {/* Powerups & Scratchpad Floating Bar */}
+        {/* Powerups Floating Bar */}
         <div className="w-full flex items-center justify-center gap-1.5 sm:gap-2 mb-2 shrink-0 flex-wrap">
-          {/* Scratchpad Canvas Trigger */}
-          <button
-            onClick={() => {
-              sounds.playTap();
-              setIsScratchpadOpen(true);
-            }}
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-sky-500/40 hover:border-sky-400 rounded-xl text-xs text-sky-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-            title="Scratchpad"
-          >
-            <span>✏️ {t.scratchpad}</span>
-          </button>
 
           {/* Freeze Button: ONLY in timed modes (Blitz / Daily) */}
           {(gameMode === 'blitz' || gameMode === 'daily') && (
@@ -558,6 +560,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
         <ScratchpadCanvas
           isOpen={isScratchpadOpen}
           onClose={() => setIsScratchpadOpen(false)}
+          questionText={currentQuestion?.questionText}
         />
       </div>
     );
@@ -764,23 +767,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           {/* Difficulty Level Segmented Tabs */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold text-slate-300">
-                  {t.difficultyLabel}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    sounds.playTap();
-                    setIsDifficultyInfoOpen(true);
-                  }}
-                  className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/30 cursor-pointer transition-colors shadow-sm"
-                  title="Level Info"
-                >
-                  <HelpCircle className="w-3 h-3" />
-                  <span>{language === 'id' ? 'Info Level' : 'Level Info'}</span>
-                </button>
-              </div>
+              <span className="text-[11px] font-bold text-slate-300">
+                {t.difficultyLabel}
+              </span>
               <span className="text-[10px] text-amber-400 font-semibold">
                 {level === 'sd_awal' ? t.diffSd13 : level === 'sd_lanjut' ? t.diffSd46 : level === 'smp' ? t.diffSmp : t.diffPro}
               </span>
@@ -843,8 +832,8 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
         </div>
       </div>
 
-      {/* Quick Access to Tricks / Masterclass Bottom Banner */}
-      <div className="pt-2">
+      {/* Quick Access to Tricks / Masterclass Bottom Banner & Free Scratchpad */}
+      <div className="pt-2 grid grid-cols-2 gap-2">
         <button
           onClick={() => {
             sounds.playTap();
@@ -852,21 +841,32 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           }}
           className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/30 hover:border-amber-400 flex items-center justify-between text-xs text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-98"
         >
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="font-semibold text-[11px] text-amber-200">
+          <div className="flex items-center gap-1.5 truncate">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="font-semibold text-[11px] text-amber-200 truncate">
               {t.masterclassBanner}
             </span>
           </div>
-          <ChevronRight className="w-4 h-4 text-amber-400 shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-1" />
+        </button>
+
+        <button
+          onClick={() => {
+            sounds.playTap();
+            setIsScratchpadOpen(true);
+          }}
+          className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-sky-500/10 via-slate-900 to-slate-900 border border-sky-500/30 hover:border-sky-400 flex items-center justify-between text-xs text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm active:scale-98"
+        >
+          <div className="flex items-center gap-1.5 truncate">
+            <PenTool className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span className="font-semibold text-[11px] text-sky-200 truncate">
+              {language === 'id' ? 'Papan Coretan' : 'Scratchpad'}
+            </span>
+          </div>
+          <ChevronRight className="w-3.5 h-3.5 text-sky-400 shrink-0 ml-1" />
         </button>
       </div>
 
-      {/* Difficulty Levels Info Modal */}
-      <DifficultyInfoModal
-        isOpen={isDifficultyInfoOpen}
-        onClose={() => setIsDifficultyInfoOpen(false)}
-      />
 
       {/* Interactive Freehand Scratchpad Canvas */}
       <ScratchpadCanvas
