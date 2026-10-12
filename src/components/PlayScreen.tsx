@@ -6,11 +6,23 @@ import {
   Flame, Award, ArrowLeft, Clock, ShieldAlert, PenTool
 } from 'lucide-react';
 import { DifficultyLevel, GameMode, MathOperation, Question } from '../types';
-import { generateQuestion } from '../utils/mathGenerator';
+import { generateQuestion, getQuestionHint } from '../utils/mathGenerator';
 import { useGame } from '../context/GameContext';
 import { sounds } from '../utils/audio';
 import { ScratchpadCanvas } from './ScratchpadCanvas';
 import { getTranslation } from '../utils/translations';
+
+interface SessionQuestionRecord {
+  id: string;
+  questionText: string;
+  userAnswer: number;
+  correctAnswer: number;
+  isCorrect: boolean;
+  responseTimeSec: number;
+  hint?: string;
+  hintId?: string;
+  hintEn?: string;
+}
 
 interface PlayScreenProps {
   onOpenTricks: () => void;
@@ -51,6 +63,10 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
   const [level, setLevel] = useState<DifficultyLevel>('sd_lanjut');
   const [operation, setOperation] = useState<MathOperation>('mixed');
   const [inputMode, setInputMode] = useState<'options' | 'keypad'>('options');
+
+  // Session History for Evaluation Review
+  const [sessionRecords, setSessionRecords] = useState<SessionQuestionRecord[]>([]);
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'wrong'>('all');
 
   // Active game session state
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -101,6 +117,8 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     setHiddenOptions([]);
     setIsFrozen(false);
     setIsDoubleXpActive(false);
+    setSessionRecords([]);
+    setReviewFilter('all');
     totalResponseTimeRef.current = 0;
 
     const firstQ = generateQuestion(level, operation, language);
@@ -150,17 +168,19 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
       // Ignore if canvas unavailable
     }
 
-    const correctCount = stats.totalCorrect;
+    const totalAttempted = sessionRecords.length;
+    const correctCount = sessionRecords.filter(r => r.isCorrect).length;
+    const wrongCount = sessionRecords.filter(r => !r.isCorrect).length;
     const finalScore = score;
     const coinsEarned = Math.max(5, Math.floor(finalScore / 25) + (isDoubleXpActive ? 15 : 0));
-    const avgSpeed = questionCount > 0 
-      ? Math.round((totalResponseTimeRef.current / questionCount) / 100) / 10 
+    const avgSpeed = totalAttempted > 0 
+      ? Math.round((totalResponseTimeRef.current / totalAttempted) / 100) / 10 
       : 2.5;
 
     setGameSummary({
       score: finalScore,
-      correct: questionCount,
-      wrong: 3 - lives,
+      correct: correctCount,
+      wrong: wrongCount,
       maxCombo,
       coinsEarned,
       avgTimeSec: avgSpeed
@@ -177,6 +197,20 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     totalResponseTimeRef.current += responseTime;
 
     const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+
+    // Record question result for session evaluation
+    const record: SessionQuestionRecord = {
+      id: 'qrec_' + Math.random().toString(36).substring(2, 9),
+      questionText: currentQuestion.questionText,
+      userAnswer: selectedAnswer,
+      correctAnswer: currentQuestion.correctAnswer,
+      isCorrect,
+      responseTimeSec: Math.round((responseTime / 1000) * 10) / 10,
+      hint: currentQuestion.hint,
+      hintId: currentQuestion.hintId,
+      hintEn: currentQuestion.hintEn
+    };
+    setSessionRecords(prev => [...prev, record]);
 
     if (isCorrect) {
       setFeedback('correct');
@@ -450,9 +484,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             )}
 
             {/* Hint or Trick prompt */}
-            {currentQuestion.hint && (
+            {getQuestionHint(currentQuestion, language) && (
               <p className="text-[11px] text-slate-400 mt-3 max-w-xs text-balance">
-                💡 {currentQuestion.hint}
+                💡 {getQuestionHint(currentQuestion, language)}
               </p>
             )}
           </div>
@@ -568,44 +602,194 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
 
   // If Game Over Screen
   if (gameOver && gameSummary) {
-    return (
-      <div className="flex-1 flex flex-col justify-between p-4 bg-slate-950 text-slate-100 select-none overflow-y-auto">
-        <div className="text-center pt-2">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-3xl shadow-lg shadow-amber-500/20 mb-3 animate-bounce">
-            🏆
-          </div>
-          <h2 className="text-2xl font-extrabold text-white font-display">
-            {t.sessionFinished}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {t.sessionFinishedDesc}
-          </p>
-        </div>
+    const totalAttempted = sessionRecords.length;
+    const correctCount = sessionRecords.filter(r => r.isCorrect).length;
+    const wrongCount = sessionRecords.filter(r => !r.isCorrect).length;
+    const accuracyPct = totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 100) : 0;
 
-        {/* Score Summary Metrics */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 my-3 grid grid-cols-2 gap-3">
-          <div className="bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-center">
-            <div className="text-[11px] text-slate-400">{t.totalScore}</div>
-            <div className="text-2xl font-extrabold text-amber-400 font-mono-math">
-              {gameSummary.score}
+    // Qualitative grade title and badge styling
+    let gradeTitle = t.evaluationGradeGreat;
+    let gradeBadgeColor = 'from-amber-400 to-orange-500';
+    if (accuracyPct === 100 && totalAttempted > 0) {
+      gradeTitle = t.evaluationGradePerfect;
+      gradeBadgeColor = 'from-emerald-400 to-teal-500';
+    } else if (accuracyPct >= 75) {
+      gradeTitle = t.evaluationGradeGreat;
+      gradeBadgeColor = 'from-amber-400 to-orange-500';
+    } else if (accuracyPct >= 50) {
+      gradeTitle = t.evaluationGradeGood;
+      gradeBadgeColor = 'from-sky-400 to-blue-500';
+    } else {
+      gradeTitle = t.evaluationGradeNeedsPractice;
+      gradeBadgeColor = 'from-rose-500 to-pink-600';
+    }
+
+    // Speed rating title
+    let speedRating = t.speedRatingFast;
+    if (gameSummary.avgTimeSec < 2.2) {
+      speedRating = t.speedRatingSuper;
+    } else if (gameSummary.avgTimeSec > 3.8) {
+      speedRating = t.speedRatingRelaxed;
+    }
+
+    const displayedRecords = reviewFilter === 'wrong'
+      ? sessionRecords.filter(r => !r.isCorrect)
+      : sessionRecords;
+
+    return (
+      <div className="flex-1 flex flex-col justify-between p-3.5 sm:p-5 bg-slate-950 text-slate-100 select-none overflow-y-auto">
+        <div className="space-y-3">
+          {/* Top Grade Badge & Title */}
+          <div className="text-center pt-1">
+            <div className={`w-14 h-14 sm:w-16 sm:h-16 mx-auto rounded-2xl bg-gradient-to-tr ${gradeBadgeColor} flex items-center justify-center text-2xl sm:text-3xl shadow-lg mb-2 animate-bounce`}>
+              {accuracyPct === 100 ? '🌟' : accuracyPct >= 75 ? '⚡' : accuracyPct >= 50 ? '👍' : '💡'}
+            </div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-white font-display">
+              {gradeTitle}
+            </h2>
+            <p className="text-[11px] sm:text-xs text-slate-300 mt-1 max-w-sm mx-auto leading-relaxed">
+              {language === 'id'
+                ? `Akurasi ${accuracyPct}% (${correctCount} benar, ${wrongCount} salah dari ${totalAttempted} soal). Rata-rata ${gameSummary.avgTimeSec}s/soal (${speedRating}).`
+                : `Accuracy ${accuracyPct}% (${correctCount} correct, ${wrongCount} wrong of ${totalAttempted} questions). Avg speed ${gameSummary.avgTimeSec}s/q (${speedRating}).`}
+            </p>
+          </div>
+
+          {/* 4 Score Metrics Cards */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 grid grid-cols-2 gap-2 shadow-md">
+            <div className="bg-slate-950/80 rounded-xl p-2 sm:p-2.5 border border-slate-800/80 text-center">
+              <div className="text-[10px] text-slate-400 font-medium">{t.totalScore}</div>
+              <div className="text-lg sm:text-xl font-black text-amber-400 font-mono-math">
+                {gameSummary.score} Pts
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 rounded-xl p-2 sm:p-2.5 border border-slate-800/80 text-center">
+              <div className="text-[10px] text-slate-400 font-medium">{t.accuracy}</div>
+              <div className={`text-lg sm:text-xl font-black font-mono-math ${accuracyPct >= 80 ? 'text-emerald-400' : accuracyPct >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
+                {accuracyPct}% ({correctCount}/{totalAttempted})
+              </div>
+            </div>
+
+            <div className="bg-slate-950/80 rounded-xl p-2 sm:p-2.5 border border-slate-800/80 text-center">
+              <div className="text-[10px] text-slate-400 font-medium">{t.avgTimeLabel}</div>
+              <div className="text-sm font-black text-sky-400 font-mono-math">
+                {gameSummary.avgTimeSec}s
+              </div>
+              <div className="text-[9px] text-slate-400 truncate">{speedRating}</div>
+            </div>
+
+            <div className="bg-slate-950/80 rounded-xl p-2 sm:p-2.5 border border-slate-800/80 text-center">
+              <div className="text-[10px] text-slate-400 font-medium">{t.bonusCoinsEarned}</div>
+              <div className="text-lg sm:text-xl font-black text-emerald-400 font-mono-math">
+                +{gameSummary.coinsEarned} 🪙
+              </div>
             </div>
           </div>
-          <div className="bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-center">
-            <div className="text-[11px] text-slate-400">{t.bonusCoinsEarned}</div>
-            <div className="text-2xl font-extrabold text-emerald-400 font-mono-math flex items-center justify-center gap-1">
-              +{gameSummary.coinsEarned} 🪙
+
+          {/* Detailed Question Review & Evaluation Section */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-3.5 shadow-md space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">📋</span>
+                <h3 className="font-extrabold text-xs text-white">
+                  {t.reviewQuestionsTitle} ({totalAttempted})
+                </h3>
+              </div>
+
+              {/* Filter Toggle: All vs Wrong Only */}
+              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setReviewFilter('all')}
+                  className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    reviewFilter === 'all'
+                      ? 'bg-amber-500 text-slate-950'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {t.showAllQuestions} ({totalAttempted})
+                </button>
+                {wrongCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setReviewFilter('wrong')}
+                    className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                      reviewFilter === 'wrong'
+                        ? 'bg-rose-500 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {t.showWrongOnly} ({wrongCount})
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-center">
-            <div className="text-[11px] text-slate-400">{t.bestStreak}</div>
-            <div className="text-xl font-bold text-orange-400 font-mono-math">
-              {gameSummary.maxCombo}x 🔥
-            </div>
-          </div>
-          <div className="bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-center">
-            <div className="text-[11px] text-slate-400">{t.avgTimeLabel}</div>
-            <div className="text-xl font-bold text-sky-400 font-mono-math">
-              {gameSummary.avgTimeSec}s {t.perQuestionShort}
+
+            {/* Question List Cards */}
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 text-xs">
+              {displayedRecords.length === 0 ? (
+                <div className="p-4 text-center text-slate-500 italic text-xs">
+                  {language === 'id' ? 'Tidak ada soal dalam kategori ini.' : 'No questions in this category.'}
+                </div>
+              ) : (
+                displayedRecords.map((rec, idx) => {
+                  const hintText = getQuestionHint(rec, language);
+                  return (
+                    <div
+                      key={rec.id || idx}
+                      className={`p-2.5 rounded-xl border transition-all ${
+                        rec.isCorrect
+                          ? 'bg-emerald-950/20 border-emerald-500/30'
+                          : 'bg-rose-950/20 border-rose-500/40'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-400 text-[10px]">
+                            #{idx + 1}
+                          </span>
+                          <span className="font-mono-math font-extrabold text-white text-sm">
+                            {rec.questionText}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                          rec.isCorrect
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        }`}>
+                          {rec.isCorrect ? `✓ ${rec.responseTimeSec}s` : `✕ ${rec.responseTimeSec}s`}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-[11px] mt-1 text-slate-300">
+                        <div>
+                          <span className="text-slate-500 font-medium mr-1">{t.yourAnswer}</span>
+                          <span className={`font-mono-math font-bold ${
+                            rec.isCorrect ? 'text-emerald-400' : 'text-rose-400 line-through'
+                          }`}>
+                            {rec.userAnswer}
+                          </span>
+                        </div>
+                        {!rec.isCorrect && (
+                          <div>
+                            <span className="text-slate-500 font-medium mr-1">{t.correctAnswer}</span>
+                            <span className="font-mono-math font-bold text-emerald-400">
+                              {rec.correctAnswer}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Pembahasan / Hint */}
+                      {hintText && (
+                        <div className="mt-1.5 pt-1.5 border-t border-slate-800/60 text-[10px] text-amber-300/90 font-medium">
+                          💡 <span className="text-slate-400">{t.explanation}</span> {hintText}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -613,20 +797,22 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
         {/* Action Buttons */}
         <div className="flex flex-col gap-2 pt-2">
           <button
+            type="button"
             onClick={() => startGame(gameMode)}
-            className="w-full h-12 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 hover:brightness-110 active:scale-98 transition-all cursor-pointer"
+            className="w-full h-11 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 hover:brightness-110 active:scale-98 transition-all cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             <span>{t.playAgain}</span>
           </button>
 
           <button
+            type="button"
             onClick={() => {
               sounds.playTap();
               setGameOver(false);
               onOpenLeaderboard();
             }}
-            className="w-full h-11 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white font-medium text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors cursor-pointer"
+            className="w-full h-10 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white font-medium text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <Trophy className="w-4 h-4 text-amber-400" />
             <span>{t.viewLeaderboardButton}</span>
@@ -634,11 +820,12 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
 
           {onOpenCertificate && (
             <button
+              type="button"
               onClick={() => {
                 sounds.playTap();
                 onOpenCertificate();
               }}
-              className="w-full h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-500/25 transition-colors cursor-pointer"
+              className="w-full h-10 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-500/25 transition-colors cursor-pointer"
             >
               <Award className="w-4 h-4 text-amber-400" />
               <span>{language === 'id' ? `Buka E-Sertifikat Prestasi (${playerName})` : `Open Certificate (${playerName})`}</span>
@@ -646,11 +833,12 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           )}
 
           <button
+            type="button"
             onClick={() => {
               sounds.playTap();
               setGameOver(false);
             }}
-            className="w-full h-10 text-slate-400 hover:text-slate-200 text-xs font-medium cursor-pointer"
+            className="w-full h-9 text-slate-400 hover:text-slate-200 text-xs font-medium cursor-pointer"
           >
             {t.backToHome}
           </button>

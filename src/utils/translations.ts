@@ -99,6 +99,22 @@ export const translations = {
     viewLeaderboardButton: 'Lihat Papan Peringkat',
     backToHome: 'Kembali ke Menu Utama',
 
+    // Evaluation & Review Section
+    evaluationHeader: 'Evaluasi & Analisis Performa',
+    evaluationGradePerfect: 'Luar Biasa Sempurna! 🌟',
+    evaluationGradeGreat: 'Sangat Bagus! ⚡',
+    evaluationGradeGood: 'Cukup Baik! 👍',
+    evaluationGradeNeedsPractice: 'Perlu Tambahan Latihan 💡',
+    reviewQuestionsTitle: 'Evaluasi Detail & Pembahasan Soal',
+    showAllQuestions: 'Semua Soal',
+    showWrongOnly: 'Salah Saja',
+    yourAnswer: 'Jawaban Kamu:',
+    correctAnswer: 'Jawaban Benar:',
+    explanation: 'Pembahasan / Petunjuk:',
+    speedRatingSuper: 'Refleks Sangat Kilat ⚡',
+    speedRatingFast: 'Cepat & Tangkas ⏱️',
+    speedRatingRelaxed: 'Teliti & Konsisten 🐢',
+
     // Masterclass Banner
     masterclassBanner: 'Masterclass Trik Kilat Mencongak',
     masterclassDesc: 'Pelajari trik cepat kuadrat akhiran 5, perkalian 11, komplemen 100, dan jurus aritmatika mental lainnya.',
@@ -287,6 +303,22 @@ export const translations = {
     playAgain: 'Practice Again',
     viewLeaderboardButton: 'View Leaderboard',
     backToHome: 'Back to Main Menu',
+
+    // Evaluation & Review Section
+    evaluationHeader: 'Performance Evaluation & Analysis',
+    evaluationGradePerfect: 'Outstanding Perfect Score! 🌟',
+    evaluationGradeGreat: 'Great Job! ⚡',
+    evaluationGradeGood: 'Good Effort! 👍',
+    evaluationGradeNeedsPractice: 'Needs More Practice 💡',
+    reviewQuestionsTitle: 'Detailed Evaluation & Question Review',
+    showAllQuestions: 'All Questions',
+    showWrongOnly: 'Wrong Only',
+    yourAnswer: 'Your Answer:',
+    correctAnswer: 'Correct Answer:',
+    explanation: 'Explanation / Hint:',
+    speedRatingSuper: 'Super Lightning Speed ⚡',
+    speedRatingFast: 'Fast & Nimble ⏱️',
+    speedRatingRelaxed: 'Careful & Consistent 🐢',
 
     // Masterclass Banner
     masterclassBanner: 'Mental Math Masterclass Tricks',

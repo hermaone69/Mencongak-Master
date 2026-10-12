@@ -5,7 +5,7 @@ import {
   Zap, AlertCircle, PenTool, Sparkles, SlidersHorizontal, CheckCircle2 
 } from 'lucide-react';
 import { DifficultyLevel, MathOperation, Question, Language } from '../types';
-import { generateQuestion } from '../utils/mathGenerator';
+import { generateQuestion, getQuestionHint } from '../utils/mathGenerator';
 import { useGame } from '../context/GameContext';
 import { sounds } from '../utils/audio';
 import { ScratchpadCanvas } from './ScratchpadCanvas';
@@ -584,6 +584,13 @@ export const DuelScreen: React.FC = () => {
             <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white font-mono-math tracking-tight my-2">
               {currentQuestion.questionText.replace(' = ?', '')} = ?
             </div>
+
+            {/* Hint prompt if available */}
+            {getQuestionHint(currentQuestion, language) && (
+              <p className="text-[11px] text-slate-400 mt-2 max-w-xs text-balance">
+                💡 {getQuestionHint(currentQuestion, language)}
+              </p>
+            )}
           </div>
         </div>
 

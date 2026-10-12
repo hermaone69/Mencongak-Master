@@ -15,6 +15,8 @@ export interface Question {
   correctAnswer: number;
   options: number[]; // 4 multiple choice options
   hint?: string;
+  hintId?: string;
+  hintEn?: string;
   trickExplanation?: string;
   timeLimitSec?: number;
 }
