@@ -9,7 +9,9 @@ interface CertificateModalProps {
 }
 
 export const CertificateModal: React.FC<CertificateModalProps> = ({ isOpen, onClose }) => {
-  const { playerName, playerLevel, playerTitle, stats, isVip, language } = useGame();
+  const { playerName, playerLevel, playerTitle, stats, isVip, language, themeMode } = useGame();
+  const isLight = themeMode === 'light';
+  const isNeon = themeMode === 'neon';
   const certRef = useRef<HTMLDivElement>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState<boolean>(false);
 
@@ -207,16 +209,26 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({ isOpen, onCl
         }
       `}</style>
 
-      <div className="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] print:border-0 print:bg-transparent">
+      <div className={`w-full max-w-xl ${
+        isLight
+          ? 'bg-white border-2 border-amber-300 text-slate-900 shadow-2xl'
+          : isNeon
+          ? 'bg-[#04241d] border-2 border-emerald-500/40 text-emerald-100 shadow-2xl shadow-emerald-500/10'
+          : 'bg-slate-900 border border-slate-700 text-slate-100 shadow-2xl'
+      } rounded-3xl overflow-hidden flex flex-col max-h-[92vh] print:border-0 print:bg-transparent`}>
         {/* Modal Header */}
-        <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between print:hidden">
+        <div className={`px-5 py-3.5 border-b ${
+          isLight ? 'border-amber-200 bg-amber-50/80' : isNeon ? 'border-emerald-500/30 bg-[#021411]' : 'border-slate-800 bg-slate-950'
+        } flex items-center justify-between print:hidden`}>
           <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-amber-400" />
-            <h3 className="font-bold text-sm text-white">
+            <Award className="w-5 h-5 text-amber-500" />
+            <h3 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
               {language === 'id' ? 'E-Sertifikat Prestasi Mencongak' : 'Mental Math Achievement E-Certificate'}
             </h3>
             {isVip && (
-              <span className="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-400/30">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                isLight ? 'bg-amber-100 text-amber-950 border-amber-300' : 'bg-amber-400/20 text-amber-300 border-amber-400/30'
+              }`}>
                 VIP GOLD PRO
               </span>
             )}
@@ -226,7 +238,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({ isOpen, onCl
               sounds.playTap();
               onClose();
             }}
-            className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+            className={`p-1 rounded-lg ${isLight ? 'text-slate-500 hover:text-slate-900' : 'text-slate-400 hover:text-white'} cursor-pointer`}
           >
             <X className="w-5 h-5" />
           </button>
@@ -303,8 +315,10 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="px-5 py-3 border-t border-slate-800 bg-slate-900 flex flex-col sm:flex-row items-center justify-between gap-2.5 print:hidden">
-          <span className="text-[11px] text-slate-400 text-center sm:text-left">
+        <div className={`px-5 py-3 border-t ${
+          isLight ? 'border-amber-200 bg-amber-50/80 text-slate-900' : isNeon ? 'border-emerald-500/30 bg-[#021411] text-emerald-100' : 'border-slate-800 bg-slate-950 text-slate-100'
+        } flex flex-col sm:flex-row items-center justify-between gap-2.5 print:hidden`}>
+          <span className={`text-[11px] ${isLight ? 'text-slate-600 font-medium' : isNeon ? 'text-emerald-300/80' : 'text-slate-400'} text-center sm:text-left`}>
             {language === 'id' ? 'Piagam penghargaan prestasi belajar anak.' : 'Official Certificate of Achievement.'}
           </span>
           <div className="flex items-center gap-2 shrink-0">
@@ -312,7 +326,13 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({ isOpen, onCl
             <button
               onClick={handleDownloadImage}
               disabled={isGeneratingImage}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-all"
+              className={`px-3 py-2 rounded-xl border font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-all ${
+                isLight
+                  ? 'bg-white hover:bg-slate-100 border-slate-300 text-slate-800'
+                  : isNeon
+                  ? 'bg-[#04241d] hover:bg-[#063328] border-emerald-500/40 text-emerald-200'
+                  : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200'
+              }`}
               title="Save PNG"
             >
               <Download className="w-3.5 h-3.5 text-sky-400" />

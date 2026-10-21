@@ -5,7 +5,7 @@ import {
   Zap, AlertCircle, PenTool, Sparkles, SlidersHorizontal, CheckCircle2 
 } from 'lucide-react';
 import { DifficultyLevel, MathOperation, Question, Language } from '../types';
-import { generateQuestion, getQuestionHint } from '../utils/mathGenerator';
+import { generateQuestion, getQuestionHint, getLevelMaxConfig, clearQuestionHistory } from '../utils/mathGenerator';
 import { useGame } from '../context/GameContext';
 import { sounds } from '../utils/audio';
 import { ScratchpadCanvas } from './ScratchpadCanvas';
@@ -225,16 +225,78 @@ export function getBotOpponents(lang: Language = 'id'): BotOpponent[] {
 }
 
 export const DuelScreen: React.FC = () => {
-  const { recordAnswer, addCoins, addXP, stats, language } = useGame();
+  const { recordAnswer, addCoins, addXP, stats, language, playerName, themeMode } = useGame();
+  const isLight = themeMode === 'light';
+  const isNeon = themeMode === 'neon';
   const t = getTranslation(language);
   const botList = getBotOpponents(language);
 
   // Settings
   const [selectedBotId, setSelectedBotId] = useState<string>(botList[0].id);
-  const [selectedOperation, setSelectedOperation] = useState<MathOperation>('mixed');
+  const [selectedOperations, setSelectedOperations] = useState<MathOperation[]>(['+', '-', '×', '÷']);
   const [totalRounds, setTotalRounds] = useState<number>(8);
+  const [maxNumber, setMaxNumber] = useState<number | null>(null);
+  const [isCustomMax, setIsCustomMax] = useState<boolean>(false);
+  const [customMaxInput, setCustomMaxInput] = useState<string>('');
 
   const selectedBot = botList.find(b => b.id === selectedBotId) || botList[0];
+  const activeBotConfig = getLevelMaxConfig(selectedBot.difficulty, language);
+
+  const handleSelectBot = (botId: string) => {
+    sounds.playTap();
+    setSelectedBotId(botId);
+    const targetBot = botList.find(b => b.id === botId) || botList[0];
+    const targetCfg = getLevelMaxConfig(targetBot.difficulty, language);
+    // If active maxNumber exceeds target bot's hardCap (e.g. Bobi SD 1-3 hardCap 50), adapt it
+    if (maxNumber !== null && maxNumber > targetCfg.hardCap) {
+      setMaxNumber(null);
+      setIsCustomMax(false);
+      setCustomMaxInput('');
+    }
+  };
+
+  const toggleOperation = (op: MathOperation) => {
+    sounds.playTap();
+    setSelectedOperations(prev => {
+      if (prev.includes(op)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter(o => o !== op);
+      } else {
+        return [...prev, op];
+      }
+    });
+  };
+
+  const selectAllOperations = () => {
+    sounds.playTap();
+    setSelectedOperations(['+', '-', '×', '÷']);
+  };
+
+  const handleSelectMaxNumber = (val: number | null) => {
+    sounds.playTap();
+    if (val !== null) {
+      const clamped = Math.min(val, activeBotConfig.hardCap);
+      setMaxNumber(clamped);
+      setIsCustomMax(false);
+      setCustomMaxInput(String(clamped));
+    } else {
+      setMaxNumber(null);
+      setIsCustomMax(false);
+      setCustomMaxInput('');
+    }
+  };
+
+  const handleCustomMaxChange = (valStr: string) => {
+    setCustomMaxInput(valStr);
+    const parsed = parseInt(valStr, 10);
+    if (!isNaN(parsed) && parsed >= 5) {
+      // Clamp to active bot's hard cap
+      const clamped = Math.min(parsed, activeBotConfig.hardCap);
+      setMaxNumber(clamped);
+    } else if (valStr.trim() === '') {
+      setMaxNumber(null);
+    }
+  };
 
   // Active Duel State
   const [isDueling, setIsDueling] = useState<boolean>(false);
@@ -287,8 +349,11 @@ export const DuelScreen: React.FC = () => {
     setConsecutivePlayerWins(0);
     setDuelWinner(null);
     setHighlightedAnswer(null);
+    clearQuestionHistory();
 
-    const firstQ = generateQuestion(bot.difficulty, selectedOperation, language);
+    const botCfg = getLevelMaxConfig(bot.difficulty, language);
+    const effectiveMax = maxNumber !== null ? Math.min(maxNumber, botCfg.hardCap) : null;
+    const firstQ = generateQuestion(bot.difficulty, selectedOperations, language, effectiveMax);
     setCurrentQuestion(firstQ);
     startRound(firstQ, bot, 1);
   };
@@ -410,7 +475,9 @@ export const DuelScreen: React.FC = () => {
       finishDuel();
     } else {
       setCurrentRound(nextRound);
-      const nextQ = generateQuestion(bot.difficulty, selectedOperation, language);
+      const botCfg = getLevelMaxConfig(bot.difficulty, language);
+      const effectiveMax = maxNumber !== null ? Math.min(maxNumber, botCfg.hardCap) : null;
+      const nextQ = generateQuestion(bot.difficulty, selectedOperations, language, effectiveMax);
       setCurrentQuestion(nextQ);
       startRound(nextQ, bot, nextRound);
     }
@@ -444,7 +511,9 @@ export const DuelScreen: React.FC = () => {
     setCurrentRound(totalRounds + 1);
     setTotalRounds(prev => prev + 1);
 
-    const suddenQ = generateQuestion(selectedBot.difficulty, selectedOperation, language);
+    const botCfg = getLevelMaxConfig(selectedBot.difficulty, language);
+    const effectiveMax = maxNumber !== null ? Math.min(maxNumber, botCfg.hardCap) : null;
+    const suddenQ = generateQuestion(selectedBot.difficulty, selectedOperations, language, effectiveMax);
     setCurrentQuestion(suddenQ);
     startRound(suddenQ, selectedBot, totalRounds + 1);
   };
@@ -452,7 +521,13 @@ export const DuelScreen: React.FC = () => {
   // 1. ARENA BERTANDING REAL-TIME
   if (isDueling && currentQuestion && !duelWinner) {
     return (
-      <div className="flex-1 flex flex-col justify-between p-3 sm:p-4 bg-slate-950 text-slate-100 select-none relative overflow-y-auto">
+      <div className={`flex-1 flex flex-col justify-between p-3 sm:p-4 select-none relative overflow-y-auto transition-colors duration-200 ${
+        isLight
+          ? 'bg-slate-50 text-slate-900'
+          : isNeon
+          ? 'bg-[#021411] text-emerald-100'
+          : 'bg-slate-950 text-slate-100'
+      }`}>
         {/* Top Navigation & Surrender Button */}
         <div className="flex items-center justify-between z-10">
           <button
@@ -460,19 +535,37 @@ export const DuelScreen: React.FC = () => {
               sounds.playTap();
               setIsDueling(false);
             }}
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+            className={`p-2 rounded-xl transition-colors cursor-pointer border ${
+              isLight
+                ? 'bg-white border-slate-300 text-slate-700 hover:text-slate-950 shadow-xs'
+                : isNeon
+                ? 'bg-[#04241d] border-emerald-500/40 text-emerald-300 hover:text-white'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+            }`}
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
 
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-800 rounded-full text-xs font-bold text-amber-400">
-            <Swords className="w-3.5 h-3.5 text-amber-400" />
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+            isLight
+              ? 'bg-amber-100 border-amber-300 text-amber-950 font-black shadow-xs'
+              : isNeon
+              ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
+              : 'bg-slate-900 border-slate-800 text-amber-400'
+          }`}>
+            <Swords className="w-3.5 h-3.5 text-amber-500" />
             <span>{t.duelRounds} {currentRound} / {totalRounds}</span>
           </div>
 
           <button
             onClick={() => setIsScratchpadOpen(true)}
-            className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:text-amber-200 cursor-pointer flex items-center gap-1 text-xs font-bold shadow-sm"
+            className={`p-2 rounded-xl border cursor-pointer flex items-center gap-1 text-xs font-bold shadow-sm transition-colors ${
+              isLight
+                ? 'bg-amber-100 border-amber-300 text-amber-950 hover:bg-amber-200'
+                : isNeon
+                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 hover:bg-emerald-500/30'
+                : 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:text-amber-200'
+            }`}
           >
             <PenTool className="w-3.5 h-3.5" />
             <span>{t.scratchpad}</span>
@@ -480,7 +573,13 @@ export const DuelScreen: React.FC = () => {
         </div>
 
         {/* Scoreboard Dual Racer Bar */}
-        <div className="my-2 bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg">
+        <div className={`my-2 rounded-2xl p-3 border shadow-md transition-colors ${
+          isLight
+            ? 'bg-white border-slate-200 text-slate-900'
+            : isNeon
+            ? 'bg-[#04241d]/90 border-emerald-500/40 text-emerald-100 shadow-lg'
+            : 'bg-slate-900/90 border-slate-800 text-slate-100'
+        }`}>
           <div className="flex items-center justify-between mb-2">
             {/* Player Info */}
             <div className="flex items-center gap-2">
@@ -488,8 +587,12 @@ export const DuelScreen: React.FC = () => {
                 😎
               </div>
               <div>
-                <span className="text-xs font-bold text-white block">{t.duelYou}</span>
-                <span className="text-sm font-black text-amber-400 font-mono-math leading-none">
+                <span className={`text-xs font-bold block truncate max-w-[110px] ${
+                  isLight ? 'text-slate-900' : 'text-white'
+                }`}>{playerName || t.duelYou}</span>
+                <span className={`text-sm font-black font-mono-math leading-none ${
+                  isLight ? 'text-amber-700' : 'text-amber-400'
+                }`}>
                   {playerScore} Pts
                 </span>
               </div>
@@ -506,19 +609,27 @@ export const DuelScreen: React.FC = () => {
             {/* Bot Info */}
             <div className="flex items-center gap-2 text-right">
               <div>
-                <span className="text-xs font-bold text-white block">{selectedBot.name}</span>
-                <span className="text-sm font-black text-sky-400 font-mono-math leading-none">
+                <span className={`text-xs font-bold block ${
+                  isLight ? 'text-slate-900' : 'text-white'
+                }`}>{selectedBot.name}</span>
+                <span className={`text-sm font-black font-mono-math leading-none ${
+                  isLight ? 'text-sky-700' : 'text-sky-400'
+                }`}>
                   {botScore} Pts
                 </span>
               </div>
-              <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-lg shadow-inner">
+              <div className={`w-8 h-8 rounded-xl border flex items-center justify-center text-lg shadow-inner ${
+                isLight ? 'bg-slate-100 border-slate-300' : isNeon ? 'bg-[#021411] border-emerald-500/40' : 'bg-slate-800 border-slate-700'
+              }`}>
                 {selectedBot.avatar}
               </div>
             </div>
           </div>
 
           {/* Tug-of-war Progress Racer */}
-          <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden flex border border-slate-800">
+          <div className={`w-full h-2.5 rounded-full overflow-hidden flex border ${
+            isLight ? 'bg-slate-200 border-slate-300' : isNeon ? 'bg-[#021411] border-emerald-500/30' : 'bg-slate-950 border-slate-800'
+          }`}>
             <div
               className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-300"
               style={{
@@ -530,17 +641,29 @@ export const DuelScreen: React.FC = () => {
               }}
             />
             <div
-              className="h-full bg-slate-700 transition-all duration-300 flex-1"
+              className={`h-full transition-all duration-300 flex-1 ${
+                isLight ? 'bg-slate-300' : isNeon ? 'bg-emerald-950' : 'bg-slate-700'
+              }`}
             />
           </div>
         </div>
 
         {/* Bot Dialogue Reaction Speech Bubble */}
-        <div className="my-1.5 p-2.5 bg-slate-900/90 border border-slate-800 rounded-2xl flex items-center gap-2.5 shadow-sm">
+        <div className={`my-1.5 p-2.5 rounded-2xl flex items-center gap-2.5 shadow-sm border transition-colors ${
+          isLight
+            ? 'bg-white border-slate-200 text-slate-800'
+            : isNeon
+            ? 'bg-[#04241d]/90 border-emerald-500/30 text-emerald-100'
+            : 'bg-slate-900/90 border-slate-800 text-slate-100'
+        }`}>
           <span className="text-xl animate-pulse">{selectedBot.avatar}</span>
           <div className="flex-1 min-w-0">
-            <span className="text-[10px] font-bold text-amber-400 block">{selectedBot.name}:</span>
-            <p className="text-xs text-slate-200 font-medium truncate italic">
+            <span className={`text-[10px] font-bold block ${
+              isLight ? 'text-amber-800 font-extrabold' : 'text-amber-400'
+            }`}>{selectedBot.name}:</span>
+            <p className={`text-xs font-medium truncate italic ${
+              isLight ? 'text-slate-800' : 'text-slate-200'
+            }`}>
               "{botDialogue || (botIsThinking ? '...' : '')}"
             </p>
           </div>
@@ -563,31 +686,60 @@ export const DuelScreen: React.FC = () => {
             </div>
           )}
 
-          <div className="w-full max-w-sm bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-7 flex flex-col items-center justify-center text-center shadow-2xl">
+          <div className={`w-full max-w-sm rounded-3xl p-5 sm:p-7 flex flex-col items-center justify-center text-center shadow-xl border transition-colors ${
+            isLight
+              ? 'bg-white border-2 border-slate-200 text-slate-900'
+              : isNeon
+              ? 'bg-[#04241d] border-2 border-emerald-500/40 text-emerald-100 shadow-emerald-500/10'
+              : 'bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 text-white shadow-2xl'
+          }`}>
             <div className="w-full flex items-center justify-between mb-2">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
-                {t.duelTopic} · {currentQuestion.operation.toUpperCase()}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className={`text-[10px] uppercase font-bold tracking-widest ${
+                  isLight ? 'text-slate-600' : 'text-slate-400'
+                }`}>
+                  {t.duelTopic} · {currentQuestion.operation.toUpperCase()}
+                </span>
+                {maxNumber && (
+                  <span className={`text-[9px] border px-1.5 py-0.5 rounded-md font-mono-math font-bold ${
+                    isLight
+                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                      : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  }`}>
+                    ≤ {maxNumber}
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   sounds.playTap();
                   setIsScratchpadOpen(true);
                 }}
-                className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white rounded-xl text-[11px] font-bold cursor-pointer transition-all active:scale-95 shadow-sm"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold cursor-pointer transition-all active:scale-95 shadow-sm border ${
+                  isLight
+                    ? 'bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-950'
+                    : isNeon
+                    ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border-emerald-400/50 text-emerald-300'
+                    : 'bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white'
+                }`}
                 title={t.scratchpad}
               >
                 <PenTool className="w-3 h-3" />
                 <span>{t.scratchpad}</span>
               </button>
             </div>
-            <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white font-mono-math tracking-tight my-2">
+            <div className={`text-3xl sm:text-4xl md:text-5xl font-extrabold font-mono-math tracking-tight my-2 ${
+              isLight ? 'text-slate-950' : 'text-white'
+            }`}>
               {currentQuestion.questionText.replace(' = ?', '')} = ?
             </div>
 
             {/* Hint prompt if available */}
             {getQuestionHint(currentQuestion, language) && (
-              <p className="text-[11px] text-slate-400 mt-2 max-w-xs text-balance">
+              <p className={`text-[11px] mt-2 max-w-xs text-balance font-medium ${
+                isLight ? 'text-slate-700' : 'text-slate-300'
+              }`}>
                 💡 {getQuestionHint(currentQuestion, language)}
               </p>
             )}
@@ -598,18 +750,21 @@ export const DuelScreen: React.FC = () => {
         <div className="grid grid-cols-2 gap-2.5 my-2">
           {currentQuestion.options.map((option, idx) => {
             const isHighlighted = highlightedAnswer?.option === option;
-            const isCorrectOption = option === currentQuestion.correctAnswer;
 
             return (
               <button
                 key={idx}
                 disabled={!isRoundActiveRef.current}
                 onClick={() => handlePlayerAnswer(option)}
-                className={`h-14 sm:h-16 rounded-2xl font-mono-math font-extrabold text-xl sm:text-2xl flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 ${
+                className={`h-14 sm:h-16 rounded-2xl font-mono-math font-extrabold text-xl sm:text-2xl flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 border ${
                   isHighlighted && highlightedAnswer?.isCorrect
-                    ? 'bg-emerald-500 text-slate-950 ring-4 ring-emerald-400/40 font-black'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 ring-4 ring-emerald-400/40 font-black'
                     : isHighlighted && !highlightedAnswer?.isCorrect
-                    ? 'bg-rose-500 text-white ring-4 ring-rose-400/40'
+                    ? 'bg-rose-500 text-white border-rose-400 ring-4 ring-rose-400/40'
+                    : isLight
+                    ? 'bg-white hover:bg-amber-50/80 border-2 border-slate-300 text-slate-950 hover:border-amber-400 shadow-sm'
+                    : isNeon
+                    ? 'bg-[#04241d] hover:bg-[#063328] border-2 border-emerald-500/40 text-emerald-100 hover:border-emerald-400 shadow-md'
                     : 'bg-slate-900 hover:bg-slate-800 border border-slate-800 text-white hover:border-amber-400/50'
                 }`}
               >
@@ -634,38 +789,66 @@ export const DuelScreen: React.FC = () => {
     const isTie = duelWinner === 'draw';
 
     return (
-      <div className="flex-1 flex flex-col justify-between p-4 bg-slate-950 text-slate-100 select-none overflow-y-auto">
+      <div className={`flex-1 flex flex-col justify-between p-4 select-none overflow-y-auto transition-colors duration-200 ${
+        isLight
+          ? 'bg-slate-50 text-slate-900'
+          : isNeon
+          ? 'bg-[#021411] text-emerald-100'
+          : 'bg-slate-950 text-slate-100'
+      }`}>
         <div className="text-center pt-2">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-3xl shadow-lg shadow-amber-500/20 mb-3 animate-bounce">
             {isPlayerVictory ? '🏆' : isTie ? '🤝' : '🦾'}
           </div>
 
-          <h2 className="text-2xl font-black text-white font-display">
+          <h2 className={`text-2xl font-black font-display ${isLight ? 'text-slate-900' : 'text-white'}`}>
             {isPlayerVictory ? t.duelWin : isTie ? t.duelTie : `${selectedBot.name} ${t.duelLoss}`}
           </h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+          <p className={`text-xs mt-1 max-w-xs mx-auto font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
             {isPlayerVictory ? t.duelWinDesc : isTie ? t.duelTieDesc : t.duelLossDesc}
           </p>
         </div>
 
         {/* Final Duel Scoreboard */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-4 my-3 space-y-3">
+        <div className={`rounded-3xl p-4 my-3 space-y-3 border transition-colors shadow-md ${
+          isLight
+            ? 'bg-white border-slate-200 text-slate-900'
+            : isNeon
+            ? 'bg-[#04241d]/90 border-emerald-500/40 text-emerald-100 shadow-lg'
+            : 'bg-slate-900/90 border border-slate-800 text-slate-100'
+        }`}>
           <div className="flex items-center justify-around py-2">
             <div className="text-center">
-              <span className="text-xs text-slate-400 font-bold block">{t.duelYou}</span>
-              <span className="text-3xl font-black text-amber-400 font-mono-math">{playerScore}</span>
+              <span className={`text-xs font-bold block truncate max-w-[110px] ${
+                isLight ? 'text-slate-700' : 'text-slate-400'
+              }`}>{playerName || t.duelYou}</span>
+              <span className={`text-3xl font-black font-mono-math ${
+                isLight ? 'text-amber-700' : 'text-amber-400'
+              }`}>{playerScore}</span>
             </div>
-            <div className="text-xl font-black text-slate-600 font-mono-math">VS</div>
+            <div className={`text-xl font-black font-mono-math ${
+              isLight ? 'text-slate-400' : 'text-slate-600'
+            }`}>VS</div>
             <div className="text-center">
-              <span className="text-xs text-slate-400 font-bold block">{selectedBot.name}</span>
-              <span className="text-3xl font-black text-sky-400 font-mono-math">{botScore}</span>
+              <span className={`text-xs font-bold block ${
+                isLight ? 'text-slate-700' : 'text-slate-400'
+              }`}>{selectedBot.name}</span>
+              <span className={`text-3xl font-black font-mono-math ${
+                isLight ? 'text-sky-700' : 'text-sky-400'
+              }`}>{botScore}</span>
             </div>
           </div>
 
           {isTie && (
             <button
               onClick={playSuddenDeath}
-              className="w-full py-2.5 rounded-xl bg-amber-500/20 border border-amber-400 text-amber-300 font-bold text-xs hover:bg-amber-500/30 cursor-pointer transition-colors shadow-sm"
+              className={`w-full py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-colors shadow-sm border ${
+                isLight
+                  ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
+                  : isNeon
+                  ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border-emerald-400/50'
+                  : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-400'
+              }`}
             >
               {t.duelSuddenDeath}
             </button>
@@ -688,7 +871,13 @@ export const DuelScreen: React.FC = () => {
               setDuelWinner(null);
               setIsDueling(false);
             }}
-            className="w-full h-11 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white font-medium text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors cursor-pointer"
+            className={`w-full h-11 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+              isLight
+                ? 'bg-white hover:bg-slate-100 border-slate-300 text-slate-800 shadow-xs'
+                : isNeon
+                ? 'bg-[#04241d] hover:bg-[#063328] border-emerald-500/40 text-emerald-300'
+                : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
+            }`}
           >
             {t.chooseOtherBot}
           </button>
@@ -699,34 +888,60 @@ export const DuelScreen: React.FC = () => {
 
   // 3. TAMPILAN UTAMA: PENGATURAN & PILIH LAWAN DUEL
   return (
-    <div className="flex-1 flex flex-col justify-between p-3.5 sm:p-4 bg-slate-950 text-slate-100 select-none overflow-y-auto">
+    <div className={`flex-1 flex flex-col justify-between p-3.5 sm:p-4 select-none overflow-y-auto transition-colors duration-200 ${
+      isLight
+        ? 'bg-slate-50 text-slate-900'
+        : isNeon
+        ? 'bg-[#021411] text-emerald-100'
+        : 'bg-slate-950 text-slate-100'
+    }`}>
       <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[11px] font-black text-amber-400 tracking-wider uppercase flex items-center gap-1.5">
+          <span className={`text-[11px] font-black tracking-wider uppercase flex items-center gap-1.5 ${
+            isLight ? 'text-amber-800 font-extrabold' : isNeon ? 'text-emerald-400' : 'text-amber-400'
+          }`}>
             <Swords className="w-3.5 h-3.5" />
             {t.duelHeader}
           </span>
-          <span className="text-[11px] text-slate-400 font-bold bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-full">
+          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+            isLight
+              ? 'bg-white border-slate-300 text-slate-700 shadow-xs'
+              : isNeon
+              ? 'bg-[#04241d] border-emerald-500/40 text-emerald-300'
+              : 'bg-slate-900 border-slate-800 text-slate-400'
+          }`}>
             🏆 {stats.totalDuelsWon} {t.duelWinsCount}
           </span>
         </div>
-        <h1 className="text-xl font-black text-white font-display">
+        <h1 className={`text-xl font-black font-display ${
+          isLight ? 'text-slate-900' : 'text-white'
+        }`}>
           {t.duelTitle}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className={`text-xs mt-0.5 ${
+          isLight ? 'text-slate-600 font-medium' : 'text-slate-400'
+        }`}>
           {t.duelSubtitle}
         </p>
 
         {/* Filter Pengaturan Duel: Operasi Hitung & Jumlah Ronde */}
-        <div className="my-3 p-3 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2.5">
+        <div className={`my-3 p-3 rounded-2xl border space-y-2.5 transition-colors shadow-sm ${
+          isLight
+            ? 'bg-white border-slate-200 text-slate-900'
+            : isNeon
+            ? 'bg-[#04241d]/90 border-emerald-500/40 text-emerald-100 shadow-lg'
+            : 'bg-slate-900/90 border-slate-800 text-slate-100'
+        }`}>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
-              <SlidersHorizontal className="w-3 h-3 text-amber-400" />
+            <span className={`text-[11px] font-bold flex items-center gap-1 ${
+              isLight ? 'text-slate-900 font-extrabold' : 'text-slate-300'
+            }`}>
+              <SlidersHorizontal className="w-3 h-3 text-amber-500" />
               <span>{t.duelTopic}</span>
             </span>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-400">{t.duelRounds}:</span>
+              <span className={`text-[10px] font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>{t.duelRounds}:</span>
               {[5, 8, 10].map(r => (
                 <button
                   key={r}
@@ -736,7 +951,11 @@ export const DuelScreen: React.FC = () => {
                   }}
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-lg cursor-pointer transition-all ${
                     totalRounds === r
-                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm font-black'
+                      : isLight
+                      ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                      : isNeon
+                      ? 'bg-[#021411] text-emerald-300 hover:text-white border border-emerald-500/30'
                       : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
                   }`}
                 >
@@ -746,27 +965,54 @@ export const DuelScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Tombol Pilihan Operasi */}
+          {/* Tombol Pilihan Operasi (Multi-Select) */}
           <div className="grid grid-cols-5 gap-1.5">
+            <button
+              type="button"
+              onClick={selectAllOperations}
+              className={`p-1.5 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer ${
+                selectedOperations.length === 4
+                  ? isLight
+                    ? 'bg-amber-100 border-2 border-amber-500 text-amber-950 font-black shadow-xs'
+                    : isNeon
+                    ? 'bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 shadow-sm'
+                    : 'bg-amber-500/20 border-2 border-amber-400 text-amber-300 shadow-sm'
+                  : isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700'
+                  : isNeon
+                  ? 'bg-[#021411] hover:bg-[#031d17] border border-emerald-500/30 text-emerald-400/60'
+                  : 'bg-slate-950/80 hover:bg-slate-800 border border-slate-800 text-slate-400'
+              }`}
+            >
+              <span className="text-xs">🔀</span>
+              <span className="text-[9px] font-bold mt-0.5 truncate w-full text-center">
+                {t.opAll}
+              </span>
+            </button>
             {[
-              { id: 'mixed', label: t.opAll, icon: '🔀' },
               { id: '×', label: language === 'id' ? 'Kali (×)' : 'Mult (×)', icon: '✖️' },
               { id: '÷', label: language === 'id' ? 'Bagi (÷)' : 'Div (÷)', icon: '➗' },
               { id: '+', label: language === 'id' ? 'Tambah (+)' : 'Add (+)', icon: '➕' },
               { id: '-', label: language === 'id' ? 'Kurang (−)' : 'Sub (−)', icon: '➖' }
             ].map(op => {
-              const isSelected = selectedOperation === op.id;
+              const isSelected = selectedOperations.includes(op.id as MathOperation);
               return (
                 <button
                   key={op.id}
-                  onClick={() => {
-                    sounds.playTap();
-                    setSelectedOperation(op.id as MathOperation);
-                  }}
+                  type="button"
+                  onClick={() => toggleOperation(op.id as MathOperation)}
                   className={`p-1.5 rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-amber-500/20 border-2 border-amber-400 text-amber-300 shadow-sm'
-                      : 'bg-slate-950/80 hover:bg-slate-800 border border-slate-800 text-slate-400'
+                      ? isLight
+                        ? 'bg-amber-100 border-2 border-amber-500 text-amber-950 font-black shadow-xs'
+                        : isNeon
+                        ? 'bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 shadow-sm'
+                        : 'bg-amber-500/20 border-2 border-amber-400 text-amber-300 shadow-sm'
+                      : isLight
+                      ? 'bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700'
+                      : isNeon
+                      ? 'bg-[#021411] hover:bg-[#031d17] border border-emerald-500/30 text-emerald-400/60'
+                      : 'bg-slate-950/80 hover:bg-slate-800 border border-slate-800 text-slate-500 opacity-60'
                   }`}
                 >
                   <span className="text-xs">{op.icon}</span>
@@ -777,49 +1023,234 @@ export const DuelScreen: React.FC = () => {
               );
             })}
           </div>
+
+          {/* Angka Tertinggi / Max Number Filter */}
+          <div className={`pt-2.5 border-t ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+              <div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`text-[11px] font-bold block leading-tight ${
+                    isLight ? 'text-slate-900 font-extrabold' : 'text-slate-300'
+                  }`}>
+                    {t.maxNumberLabel}
+                  </span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border ${
+                    isLight
+                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                      : isNeon
+                      ? 'bg-[#021411] text-emerald-300 border-emerald-500/40'
+                      : 'bg-slate-800 text-amber-300 border-slate-700'
+                  }`}>
+                    {selectedBot.name} ({selectedBot.levelTitle})
+                  </span>
+                </div>
+                <span className={`text-[9px] font-medium ${
+                  isLight ? 'text-amber-800 font-bold' : 'text-amber-300/90'
+                }`}>
+                  {maxNumber
+                    ? `${language === 'id' ? 'Batas aktif: Maksimal s/d' : 'Active limit: Up to'} ${maxNumber}`
+                    : `${t.maxNumberAuto} (${language === 'id' ? 'otomatis sesuai level bot' : 'auto per bot level'})`}
+                </span>
+              </div>
+              {maxNumber !== null && (
+                <button
+                  type="button"
+                  onClick={() => handleSelectMaxNumber(null)}
+                  className={`text-[9px] px-2 py-0.5 rounded-md cursor-pointer font-bold transition-all border ${
+                    isLight
+                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                      : isNeon
+                      ? 'bg-[#021411] hover:bg-[#031d17] text-emerald-300 border-emerald-500/30'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                  }`}
+                >
+                  ↺ Reset {t.maxNumberAuto}
+                </button>
+              )}
+            </div>
+
+            {/* Presets Grid adapted to selected bot difficulty */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 text-[11px]">
+              {activeBotConfig.presets.map(preset => {
+                const isSelected = !isCustomMax && maxNumber === preset.value;
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => handleSelectMaxNumber(preset.value)}
+                    className={`py-1.5 px-1 rounded-lg border font-bold text-center transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black shadow-sm scale-[1.02]'
+                        : isLight
+                        ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                        : isNeon
+                        ? 'bg-[#021411] border-emerald-500/30 text-emerald-300 hover:border-emerald-400'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Level Pedagogical Guidance Note */}
+            <div className={`mt-1.5 flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-lg border ${
+              isLight
+                ? 'bg-amber-50 border-amber-200 text-amber-950 font-medium'
+                : 'text-amber-300/80 bg-amber-500/10 border-amber-500/20'
+            }`}>
+              <span>💡</span>
+              <span className="leading-tight font-medium">{activeBotConfig.description}</span>
+            </div>
+
+            {/* Custom Max Number Field */}
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playTap();
+                  setIsCustomMax(true);
+                  if (!maxNumber) setMaxNumber(Math.min(50, activeBotConfig.defaultMax));
+                }}
+                className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer shrink-0 ${
+                  isCustomMax
+                    ? isLight
+                      ? 'bg-amber-100 border-2 border-amber-500 text-amber-950 shadow-xs'
+                      : isNeon
+                      ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                      : 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-sm ring-1 ring-amber-400/30'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                {t.maxNumberCustom}
+              </button>
+
+              {isCustomMax ? (
+                <div className="flex-1 flex items-center gap-1.5 animate-in fade-in duration-150">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min={5}
+                      max={activeBotConfig.hardCap}
+                      value={customMaxInput || (maxNumber ? String(maxNumber) : '')}
+                      onChange={e => handleCustomMaxChange(e.target.value)}
+                      placeholder={selectedBot.difficulty === 'sd_awal' ? 'Contoh: 10, 15, 20...' : t.maxNumberCustomPlaceholder}
+                      className={`w-full rounded-xl px-2.5 py-1 text-xs font-mono-math font-bold focus:outline-none focus:ring-1 focus:ring-amber-400 border ${
+                        isLight
+                          ? 'bg-white border-amber-400 text-slate-900 placeholder:text-slate-400'
+                          : isNeon
+                          ? 'bg-[#021411] border-emerald-500 text-emerald-200 placeholder:text-emerald-700'
+                          : 'bg-slate-950 border-amber-500/60 text-amber-300 placeholder:text-slate-600'
+                      }`}
+                    />
+                  </div>
+                  <span className={`text-[10px] shrink-0 font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                    {language === 'id' ? `Maks ≤ ${activeBotConfig.hardCap}` : `Cap ≤ ${activeBotConfig.hardCap}`}
+                  </span>
+                </div>
+              ) : (
+                <span className={`text-[10px] italic truncate font-medium ${isLight ? 'text-slate-600' : 'text-slate-500'}`}>
+                  {maxNumber ? `${t.maxNumberNote}` : `${language === 'id' ? 'Pilih batas angka di atas atau masukkan angka bebas.' : 'Pick ceiling above or enter custom number.'}`}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Daftar Bot AI */}
         <div className="space-y-2.5">
-          {botList.map(bot => (
-            <div
-              key={bot.id}
-              className="bg-slate-900/90 border border-slate-800 hover:border-slate-700/90 rounded-2xl p-3 flex items-center justify-between transition-all shadow-sm"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-2xl shadow-inner shrink-0">
-                  {bot.avatar}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-bold text-xs sm:text-sm text-white truncate">
-                      {bot.name}
-                    </h3>
-                    <span className="text-[9px] bg-slate-800 text-amber-300 font-semibold px-1.5 py-0.5 rounded border border-slate-700">
-                      {bot.levelTitle}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5 leading-tight line-clamp-2">
-                    {bot.description}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => startDuel(bot)}
-                className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer shrink-0 ml-2"
+          {botList.map(bot => {
+            const isBotSelected = bot.id === selectedBotId;
+            return (
+              <div
+                key={bot.id}
+                onClick={() => handleSelectBot(bot.id)}
+                className={`rounded-2xl p-3 flex items-center justify-between transition-all shadow-sm cursor-pointer ${
+                  isBotSelected
+                    ? isLight
+                      ? 'bg-amber-50/90 border-2 border-amber-400 ring-2 ring-amber-300/60 shadow-md'
+                      : isNeon
+                      ? 'bg-[#042e25] border-2 border-emerald-400 ring-1 ring-emerald-400/50 shadow-emerald-500/20'
+                      : 'bg-slate-900 border-2 border-amber-400/80 ring-1 ring-amber-400/40 shadow-amber-500/10'
+                    : isLight
+                    ? 'bg-white border-2 border-slate-200/90 hover:border-amber-300 shadow-sm'
+                    : isNeon
+                    ? 'bg-[#04241d]/90 border border-emerald-500/30 hover:border-emerald-400 shadow-md'
+                    : 'bg-slate-900/90 border border-slate-800 hover:border-slate-700/90'
+                }`}
               >
-                <Swords className="w-3.5 h-3.5" />
-                <span>Duel</span>
-              </button>
-            </div>
-          ))}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center text-2xl shadow-inner shrink-0 ${
+                    isLight ? 'bg-slate-100 border-slate-300' : isNeon ? 'bg-[#021411] border-emerald-500/30' : 'bg-slate-800 border-slate-700'
+                  }`}>
+                    {bot.avatar}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className={`font-bold text-xs sm:text-sm truncate ${
+                        isLight ? 'text-slate-900 font-extrabold' : 'text-white'
+                      }`}>
+                        {bot.name}
+                      </h3>
+                      <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
+                        isLight
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : isNeon
+                          ? 'bg-[#021411] text-emerald-300 border-emerald-500/40'
+                          : 'bg-slate-800 text-amber-300 border-slate-700'
+                      }`}>
+                        {bot.levelTitle}
+                      </span>
+                      {isBotSelected && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                          isLight
+                            ? 'bg-emerald-100 text-emerald-950 border-emerald-300'
+                            : isNeon
+                            ? 'bg-emerald-500/30 text-emerald-200 border-emerald-400'
+                            : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                        }`}>
+                          ✓ {language === 'id' ? 'Aktif' : 'Selected'}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-[11px] mt-0.5 leading-tight line-clamp-2 ${
+                      isLight ? 'text-slate-600 font-medium' : 'text-slate-400'
+                    }`}>
+                      {bot.description}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startDuel(bot);
+                  }}
+                  className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer shrink-0 ml-2"
+                >
+                  <Swords className="w-3.5 h-3.5" />
+                  <span>Duel</span>
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Info Aturan */}
-      <div className="mt-3 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3 text-center">
-        <p className="text-xs text-slate-400 leading-relaxed">
+      <div className={`mt-3 rounded-2xl p-3 text-center border transition-colors ${
+        isLight
+          ? 'bg-white border-slate-200 text-slate-700 shadow-xs'
+          : isNeon
+          ? 'bg-[#04241d]/80 border-emerald-500/30 text-emerald-300'
+          : 'bg-slate-900/60 border border-slate-800/80 text-slate-400'
+      }`}>
+        <p className={`text-xs leading-relaxed font-medium ${
+          isLight ? 'text-slate-700' : 'text-slate-400'
+        }`}>
           ⚡ {t.duelTips}
         </p>
       </div>

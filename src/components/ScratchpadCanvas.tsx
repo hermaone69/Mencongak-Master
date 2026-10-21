@@ -14,15 +14,19 @@ export const ScratchpadCanvas: React.FC<ScratchpadCanvasProps> = ({
   onClose,
   questionText
 }) => {
-  const { language } = useGame();
+  const { language, themeMode } = useGame();
   const isEn = language === 'en';
+  const isLight = themeMode === 'light';
+  const isNeon = themeMode === 'neon';
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef<boolean>(false);
   const lastPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const historyRef = useRef<ImageData[]>([]);
 
-  const [strokeColor, setStrokeColor] = useState<string>('#38bdf8'); // Neon sky blue default
+  const [strokeColor, setStrokeColor] = useState<string>(
+    isLight ? '#0f172a' : isNeon ? '#34d399' : '#38bdf8'
+  );
   const [strokeWidth, setStrokeWidth] = useState<number>(3.5);
   const [canUndo, setCanUndo] = useState<boolean>(false);
 
@@ -182,20 +186,36 @@ export const ScratchpadCanvas: React.FC<ScratchpadCanvasProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-start sm:items-center justify-center p-2.5 sm:p-4 pt-2.5 sm:pt-6 pb-safe select-none animate-in fade-in duration-150">
+    <div className={`fixed inset-0 z-50 ${isLight ? 'bg-slate-900/40' : 'bg-slate-950/85'} backdrop-blur-md flex items-start sm:items-center justify-center p-2.5 sm:p-4 pt-2.5 sm:pt-6 pb-safe select-none animate-in fade-in duration-150`}>
       {/* Centered Ergonomic Modal Container */}
-      <div className="w-full max-w-md sm:max-w-lg bg-slate-900 border-2 border-slate-700/90 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[88dvh] sm:h-[82dvh] max-h-[720px] mx-auto animate-in zoom-in-95 duration-150">
+      <div className={`w-full max-w-md sm:max-w-lg ${
+        isLight
+          ? 'bg-white border-2 border-amber-300 shadow-2xl'
+          : isNeon
+          ? 'bg-[#04241d] border-2 border-emerald-500/50 shadow-2xl shadow-emerald-500/20'
+          : 'bg-slate-900 border-2 border-slate-700/90 shadow-2xl'
+      } rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col h-[88dvh] sm:h-[82dvh] max-h-[720px] mx-auto animate-in zoom-in-95 duration-150`}>
         {/* Header Toolbar */}
-        <div className="px-3 py-2 sm:px-3.5 sm:py-2.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <div className={`px-3 py-2 sm:px-3.5 sm:py-2.5 ${
+          isLight
+            ? 'bg-amber-100/90 border-b border-amber-200'
+            : isNeon
+            ? 'bg-[#021411] border-b border-emerald-500/40'
+            : 'bg-slate-950 border-b border-slate-800'
+        } flex items-center justify-between shrink-0`}>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-sm font-black shadow-sm shrink-0">
+            <div className="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center text-sm font-black shadow-sm shrink-0">
               ✏️
             </div>
             <div>
-              <h3 className="font-extrabold text-xs sm:text-sm text-white leading-tight">
+              <h3 className={`font-extrabold text-xs sm:text-sm ${
+                isLight ? 'text-slate-900' : isNeon ? 'text-emerald-100' : 'text-white'
+              } leading-tight`}>
                 {isEn ? 'Scratchpad Canvas' : 'Papan Coretan Hitung'}
               </h3>
-              <p className="text-[10px] text-slate-400">
+              <p className={`text-[10px] ${
+                isLight ? 'text-slate-700 font-medium' : isNeon ? 'text-emerald-300/80 font-medium' : 'text-slate-400'
+              }`}>
                 {isEn ? 'Rough calculation area' : 'Area oret-oretan hitung'}
               </p>
             </div>
@@ -204,12 +224,12 @@ export const ScratchpadCanvas: React.FC<ScratchpadCanvasProps> = ({
           {/* Color & Tool Controls */}
           <div className="flex items-center gap-1 sm:gap-1.5">
             {/* Color Palette */}
-            <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <div className={`flex items-center gap-1 ${isLight ? 'bg-white border border-amber-200' : 'bg-slate-900 border border-slate-800'} p-1 rounded-xl`}>
               {[
-                { color: '#38bdf8', label: isEn ? 'Neon Blue' : 'Biru Neon' },
-                { color: '#fbbf24', label: isEn ? 'Gold' : 'Emas' },
-                { color: '#4ade80', label: isEn ? 'Green' : 'Hijau' },
-                { color: '#ffffff', label: isEn ? 'White' : 'Putih' }
+                { color: isLight ? '#1e293b' : '#38bdf8', label: isEn ? 'Primary' : 'Utama' },
+                { color: '#d97706', label: isEn ? 'Gold' : 'Emas' },
+                { color: '#16a34a', label: isEn ? 'Green' : 'Hijau' },
+                { color: '#dc2626', label: isEn ? 'Red' : 'Merah' }
               ].map(c => (
                 <button
                   key={c.color}
@@ -218,7 +238,7 @@ export const ScratchpadCanvas: React.FC<ScratchpadCanvasProps> = ({
                     setStrokeColor(c.color);
                   }}
                   className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border transition-all cursor-pointer ${
-                    strokeColor === c.color ? 'ring-2 ring-white scale-110 shadow-sm' : 'opacity-60 hover:opacity-100'
+                    strokeColor === c.color ? 'ring-2 ring-amber-500 scale-110 shadow-sm' : 'opacity-60 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: c.color }}
                   title={c.label}
@@ -232,8 +252,8 @@ export const ScratchpadCanvas: React.FC<ScratchpadCanvasProps> = ({
               disabled={!canUndo}
               className={`p-1.5 sm:p-2 rounded-xl border transition-colors shadow-sm ${
                 canUndo 
-                  ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-slate-700 cursor-pointer' 
-                  : 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed opacity-40'
+                  ? isLight ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 cursor-pointer' : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-slate-700 cursor-pointer' 
+                  : isLight ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-40' : 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed opacity-40'
               }`}
               title={isEn ? 'Undo stroke' : 'Urungkan coretan'}
             >
@@ -243,7 +263,9 @@ export const ScratchpadCanvas: React.FC<ScratchpadCanvasProps> = ({
             {/* Clear Button */}
             <button
               onClick={clearCanvas}
-              className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-400 hover:text-rose-300 border border-slate-700 cursor-pointer transition-colors shadow-sm"
+              className={`p-1.5 sm:p-2 rounded-xl ${
+                isLight ? 'bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300' : 'bg-slate-800 hover:bg-slate-700 text-rose-400 border border-slate-700'
+              } cursor-pointer transition-colors shadow-sm`}
               title={isEn ? 'Clear Canvas' : 'Hapus Semua Coretan'}
             >
               <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -265,28 +287,38 @@ export const ScratchpadCanvas: React.FC<ScratchpadCanvasProps> = ({
 
         {/* Active Question Display */}
         {questionText && (
-          <div className="bg-slate-950 border-b border-slate-800/80 px-3.5 py-2 flex items-center justify-between shrink-0">
+          <div className={`${
+            isLight ? 'bg-amber-50 border-b border-amber-200' : 'bg-slate-950 border-b border-slate-800/80'
+          } px-3.5 py-2 flex items-center justify-between shrink-0`}>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              <span className={`text-[10px] uppercase font-bold ${isLight ? 'text-slate-600' : 'text-slate-400'} tracking-wider`}>
                 {isEn ? 'Question:' : 'Soal:'}
               </span>
-              <span className="text-base sm:text-lg font-black text-amber-300 font-mono-math tracking-wide">
+              <span className={`text-base sm:text-lg font-black ${isLight ? 'text-amber-900' : 'text-amber-300'} font-mono-math tracking-wide`}>
                 {questionText}
               </span>
             </div>
-            <span className="text-[10px] text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-lg border border-sky-500/20 font-semibold">
+            <span className={`text-[10px] ${
+              isLight ? 'text-amber-800 bg-amber-100 border border-amber-300' : 'text-sky-400 bg-sky-500/10 border border-sky-500/20'
+            } px-2 py-0.5 rounded-lg font-bold`}>
               {isEn ? 'Draw to calculate' : 'Coret-coret hitung'}
             </span>
           </div>
         )}
 
         {/* Interactive Drawing Canvas */}
-        <div className="flex-1 relative bg-slate-950 overflow-hidden cursor-crosshair touch-none">
+        <div className={`flex-1 relative ${
+          isLight ? 'bg-amber-50/70' : isNeon ? 'bg-[#021310]' : 'bg-slate-950'
+        } overflow-hidden cursor-crosshair touch-none`}>
           {/* Subtle Grid Pattern for Math Alignment */}
           <div 
             className="absolute inset-0 opacity-20 pointer-events-none"
             style={{
-              backgroundImage: 'radial-gradient(circle, #64748b 1px, transparent 1px)',
+              backgroundImage: isLight 
+                ? 'radial-gradient(circle, #b45309 1px, transparent 1px)' 
+                : isNeon
+                ? 'radial-gradient(circle, #10b981 1.5px, transparent 1.5px)'
+                : 'radial-gradient(circle, #64748b 1px, transparent 1px)',
               backgroundSize: '24px 24px'
             }}
           />

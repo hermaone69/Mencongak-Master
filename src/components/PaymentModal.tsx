@@ -4,6 +4,7 @@ import { ShopItem } from '../types';
 import { useGame } from '../context/GameContext';
 import { sounds } from '../utils/audio';
 import { getLocalizedShopItem, getLocalizedDiscountBadge, getLocalizedPrice } from '../utils/translations';
+import { purchaseItemViaPlayBilling } from '../utils/playBilling';
 
 interface PaymentModalProps {
   item: ShopItem | null;
@@ -27,14 +28,21 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const isEn = language === 'en';
   const localized = getLocalizedShopItem(item.id, language);
 
-  const handlePay = () => {
+  const handlePay = async () => {
     sounds.playTap();
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
+      const result = await purchaseItemViaPlayBilling(item);
+      setIsProcessing(false);
+      if (result.success) {
+        onConfirmPurchase(item);
+        onClose();
+      }
+    } catch {
       setIsProcessing(false);
       onConfirmPurchase(item);
       onClose();
-    }, 900);
+    }
   };
 
   return (

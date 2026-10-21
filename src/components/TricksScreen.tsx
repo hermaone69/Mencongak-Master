@@ -8,9 +8,11 @@ import { sounds } from '../utils/audio';
 import { getTranslation } from '../utils/translations';
 
 export const TricksScreen: React.FC = () => {
-  const { unlockedTricks, unlockTrickWithCoins, coins, isVip, addXP, language } = useGame();
+  const { unlockedTricks, unlockTrickWithCoins, coins, isVip, addXP, language, themeMode } = useGame();
   const t = getTranslation(language);
   const currentTricksList = getMentalTricks(language);
+  const isLight = themeMode === 'light';
+  const isNeon = themeMode === 'neon';
 
   const [selectedTrickId, setSelectedTrickId] = useState<string | null>(null);
   const [activePracticeIndex, setActivePracticeIndex] = useState<number>(0);
@@ -79,7 +81,9 @@ export const TricksScreen: React.FC = () => {
     const currentPracticeQ = selectedTrick.practiceQuestions[activePracticeIndex];
 
     return (
-      <div className="flex-1 flex flex-col justify-between p-3.5 bg-slate-950 text-slate-100 select-none overflow-y-auto">
+      <div className={`flex-1 flex flex-col justify-between p-3.5 ${
+        isLight ? 'bg-slate-50 text-slate-900' : isNeon ? 'bg-[#021411] text-emerald-100' : 'bg-slate-950 text-slate-100'
+      } select-none overflow-y-auto transition-colors duration-200`}>
         <div>
           {/* Top Bar */}
           <div className="flex items-center justify-between mb-2">
@@ -88,54 +92,78 @@ export const TricksScreen: React.FC = () => {
                 sounds.playTap();
                 setSelectedTrickId(null);
               }}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+              className={`p-2 rounded-xl transition-colors cursor-pointer border ${
+                isLight
+                  ? 'bg-white border-slate-300 text-slate-700 hover:text-slate-950 shadow-xs'
+                  : isNeon
+                  ? 'bg-[#04241d] border-emerald-500/40 text-emerald-300 hover:text-white'
+                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+              }`}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <span className="text-[11px] font-semibold text-amber-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
+            <span className={`text-[11px] font-bold ${
+              isLight
+                ? 'bg-white border-2 border-amber-300 text-amber-950 shadow-xs'
+                : isNeon
+                ? 'bg-[#04241d] border border-emerald-500/40 text-emerald-300'
+                : 'bg-slate-900 border border-slate-800 text-amber-400'
+            } px-3 py-1 rounded-full`}>
               {selectedTrick.category}
             </span>
             <div className="w-8" />
           </div>
 
-          <h2 className="text-xl font-extrabold text-white font-display">
+          <h2 className={`text-xl font-extrabold ${isLight ? 'text-slate-900' : 'text-white'} font-display`}>
             {selectedTrick.title}
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className={`text-xs mt-1 font-medium ${isLight ? 'text-slate-600' : isNeon ? 'text-emerald-300/80' : 'text-slate-400'}`}>
             {selectedTrick.shortDesc}
           </p>
 
           {/* Example Box */}
-          <div className="my-3 p-3 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-300">{t.exampleLabel}</span>
-            <span className="font-mono-math font-extrabold text-amber-300 text-base">
+          <div className={`my-3 p-3 rounded-2xl flex items-center justify-between border ${
+            isLight
+              ? 'bg-amber-100/70 border-2 border-amber-300 text-slate-900 shadow-sm'
+              : isNeon
+              ? 'bg-[#04241d] border border-emerald-500/40 text-emerald-100'
+              : 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30'
+          }`}>
+            <span className={`text-xs font-bold ${isLight ? 'text-slate-800' : isNeon ? 'text-emerald-300' : 'text-slate-300'}`}>
+              {t.exampleLabel}
+            </span>
+            <span className={`font-mono-math font-extrabold text-base ${isLight ? 'text-amber-800' : 'text-amber-300'}`}>
               {selectedTrick.exampleProblem}
             </span>
           </div>
 
           {/* Step-by-Step Breakdown Cards */}
           <div className="space-y-2.5 my-3">
-            <div className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
+            <div className={`text-[11px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-300'} flex items-center gap-1`}>
               <span>{t.stepsLabel}</span>
             </div>
             {selectedTrick.steps.map(step => (
               <div
                 key={step.stepNumber}
-                className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3"
+                className={`${
+                  isLight ? 'bg-white border-2 border-slate-200 text-slate-900 shadow-xs' : 'bg-slate-900/90 border border-slate-800 text-slate-100'
+                } rounded-2xl p-3`}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center">
                     {step.stepNumber}
                   </div>
-                  <h4 className="font-bold text-xs text-white">
+                  <h4 className={`font-bold text-xs ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {step.title}
                   </h4>
                 </div>
-                <p className="text-xs text-slate-300 pl-7 leading-relaxed">
+                <p className={`text-xs ${isLight ? 'text-slate-700' : 'text-slate-300'} pl-7 leading-relaxed`}>
                   {step.explanation}
                 </p>
                 {step.formula && (
-                  <div className="mt-2 ml-7 px-2.5 py-1 bg-slate-950 rounded-lg border border-slate-800 font-mono-math font-bold text-xs text-emerald-400 inline-block">
+                  <div className={`mt-2 ml-7 px-2.5 py-1 ${
+                    isLight ? 'bg-emerald-50 border border-emerald-200 text-emerald-900 font-extrabold' : 'bg-slate-950 border border-slate-800 text-emerald-400 font-bold'
+                  } rounded-lg font-mono-math text-xs inline-block`}>
                     {step.formula}
                   </div>
                 )}
@@ -144,22 +172,24 @@ export const TricksScreen: React.FC = () => {
           </div>
 
           {/* Interactive Practice Drill Area */}
-          <div className="my-4 bg-slate-900 border border-slate-800 rounded-2xl p-3.5">
+          <div className={`my-4 ${
+            isLight ? 'bg-white border-2 border-amber-300 shadow-md' : 'bg-slate-900 border border-slate-800'
+          } rounded-2xl p-3.5`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> {t.practiceDrill} ({activePracticeIndex + 1}/{selectedTrick.practiceQuestions.length})
+              <span className={`text-xs font-bold ${isLight ? 'text-amber-800' : 'text-amber-400'} flex items-center gap-1.5`}>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> {t.practiceDrill} ({activePracticeIndex + 1}/{selectedTrick.practiceQuestions.length})
               </span>
             </div>
 
             {practiceCompleted ? (
               <div className="text-center py-3">
-                <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl mb-2">
+                <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-2xl mb-2 font-black">
                   ✓
                 </div>
-                <h4 className="font-bold text-sm text-white">
+                <h4 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   {t.trickMasteredTitle}
                 </h4>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'} mt-0.5`}>
                   {t.trickMasteredDesc}
                 </p>
               </div>
@@ -167,11 +197,11 @@ export const TricksScreen: React.FC = () => {
               currentPracticeQ && (
                 <div>
                   <div className="text-center py-2">
-                    <div className="text-2xl font-black text-white font-mono-math">
+                    <div className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'} font-mono-math`}>
                       {currentPracticeQ.questionText}
                     </div>
                     {currentPracticeQ.hint && (
-                      <p className="text-[11px] text-slate-400 mt-1">
+                      <p className={`text-[11px] ${isLight ? 'text-amber-800 font-medium' : 'text-slate-400'} mt-1`}>
                         💡 {currentPracticeQ.hint}
                       </p>
                     )}
@@ -187,9 +217,11 @@ export const TricksScreen: React.FC = () => {
                           onClick={() => handlePracticeAnswer(opt, currentPracticeQ)}
                           className={`h-12 rounded-xl font-mono-math font-bold text-lg flex items-center justify-center transition-all cursor-pointer ${
                             isSelected && isAnswerCorrect === true
-                              ? 'bg-emerald-500 text-slate-950 font-black'
+                              ? 'bg-emerald-500 text-slate-950 font-black shadow-md'
                               : isSelected && isAnswerCorrect === false
-                              ? 'bg-rose-500 text-white'
+                              ? 'bg-rose-500 text-white font-black'
+                              : isLight
+                              ? 'bg-slate-50 hover:bg-amber-100 border-2 border-slate-200 text-slate-900 hover:border-amber-400'
                               : 'bg-slate-950 hover:bg-slate-800 border border-slate-800 text-white'
                           }`}
                         >
@@ -206,7 +238,9 @@ export const TricksScreen: React.FC = () => {
 
         <button
           onClick={() => setSelectedTrickId(null)}
-          className="w-full h-11 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold hover:text-white cursor-pointer mt-2"
+          className={`w-full h-11 rounded-xl ${
+            isLight ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+          } text-xs cursor-pointer mt-2`}
         >
           {t.finishTrickButton}
         </button>
@@ -216,20 +250,26 @@ export const TricksScreen: React.FC = () => {
 
   // Tricks Catalog View
   return (
-    <div className="flex-1 flex flex-col justify-between p-3.5 bg-slate-950 text-slate-100 select-none overflow-y-auto">
+    <div className={`flex-1 flex flex-col justify-between p-3.5 ${
+      isLight ? 'bg-slate-50 text-slate-900' : isNeon ? 'bg-[#021411] text-emerald-100' : 'bg-slate-950 text-slate-100'
+    } select-none overflow-y-auto transition-colors duration-200`}>
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-semibold text-amber-400 tracking-wide">
+          <span className={`text-xs font-black tracking-wide ${
+            isLight ? 'text-amber-800' : isNeon ? 'text-emerald-400' : 'text-amber-500'
+          }`}>
             {t.tricksHeaderBadge}
           </span>
-          <span className="text-[10px] text-slate-500">
+          <span className={`text-[10px] font-bold ${
+            isLight ? 'text-slate-700' : isNeon ? 'text-emerald-300' : 'text-slate-400'
+          }`}>
             {unlockedTricks.length} / {currentTricksList.length} {language === 'id' ? 'Terbuka' : 'Unlocked'}
           </span>
         </div>
-        <h1 className="text-xl font-extrabold text-white font-display">
+        <h1 className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'} font-display`}>
           {t.tricksTitle}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className={`text-xs ${isLight ? 'text-slate-600 font-medium' : isNeon ? 'text-emerald-300/80 font-medium' : 'text-slate-400'} mt-0.5`}>
           {t.tricksSubtitle}
         </p>
       </div>
@@ -245,30 +285,44 @@ export const TricksScreen: React.FC = () => {
               key={trick.id}
               className={`rounded-2xl border p-3.5 transition-all ${
                 isUnlocked
-                  ? 'bg-slate-900/90 border-slate-800 hover:border-amber-400/50 cursor-pointer'
-                  : 'bg-slate-900/40 border-slate-800/80 opacity-90'
+                  ? isLight
+                    ? 'bg-white border-2 border-slate-200 shadow-sm hover:border-amber-400 cursor-pointer text-slate-900'
+                    : isNeon
+                    ? 'bg-[#04241d] border border-emerald-500/40 hover:border-emerald-400 shadow-md cursor-pointer text-emerald-100'
+                    : 'bg-slate-900/90 border-slate-800 hover:border-amber-400/50 cursor-pointer text-slate-100'
+                  : isLight
+                  ? 'bg-slate-100/90 border-2 border-slate-200 text-slate-700 opacity-90'
+                  : isNeon
+                  ? 'bg-[#021411]/80 border border-emerald-500/20 text-emerald-400/60 opacity-85'
+                  : 'bg-slate-900/40 border-slate-800/80 text-slate-400 opacity-90'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                    <span className={`text-[10px] font-black ${
+                      isLight
+                        ? 'text-amber-950 bg-amber-100 border border-amber-300'
+                        : isNeon
+                        ? 'text-emerald-300 bg-emerald-500/20 border border-emerald-400/50'
+                        : 'text-amber-400 bg-amber-400/10 border-amber-400/20'
+                    } px-2 py-0.5 rounded`}>
                       {trick.category}
                     </span>
                     {isUnlocked && (
-                      <span className="text-[10px] text-emerald-400 flex items-center gap-0.5 font-medium">
+                      <span className={`text-[10px] ${isLight ? 'text-emerald-700' : 'text-emerald-400'} flex items-center gap-0.5 font-black`}>
                         <CheckCircle2 className="w-3 h-3" /> {t.unlockedBadge}
                       </span>
                     )}
                   </div>
-                  <h3 className="font-bold text-sm text-white mt-1">
+                  <h3 className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'} mt-1`}>
                     {trick.title}
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
+                  <p className={`text-xs ${isLight ? 'text-slate-600 font-medium' : isNeon ? 'text-emerald-300/80 font-medium' : 'text-slate-400'} mt-0.5 line-clamp-2`}>
                     {trick.shortDesc}
                   </p>
-                  <div className="mt-2 text-[11px] font-mono-math text-slate-300">
-                    {t.exampleLabel} <span className="text-amber-300 font-bold">{trick.exampleProblem}</span>
+                  <div className={`mt-2 text-[11px] font-mono-math ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                    {t.exampleLabel} <span className={`${isLight ? 'text-amber-800 font-black' : isNeon ? 'text-emerald-300 font-black' : 'text-amber-300 font-bold'}`}>{trick.exampleProblem}</span>
                   </div>
                 </div>
 
@@ -276,7 +330,13 @@ export const TricksScreen: React.FC = () => {
                   {isUnlocked ? (
                     <button
                       onClick={() => openTrick(trick)}
-                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold flex items-center gap-1 border border-slate-700 cursor-pointer"
+                      className={`px-3 py-2 rounded-xl ${
+                        isLight
+                          ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-2 border-amber-300 font-black'
+                          : isNeon
+                          ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 font-bold'
+                          : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold'
+                      } text-xs flex items-center gap-1 cursor-pointer shadow-xs`}
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>{t.learnButton}</span>
@@ -286,7 +346,9 @@ export const TricksScreen: React.FC = () => {
                       onClick={() => handleUnlock(trick)}
                       className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                         canAfford
-                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md'
+                          ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md font-extrabold'
+                          : isLight
+                          ? 'bg-slate-200 text-slate-600 border border-slate-300'
                           : 'bg-slate-800 text-slate-500 border border-slate-700'
                       }`}
                     >
@@ -301,8 +363,14 @@ export const TricksScreen: React.FC = () => {
         })}
       </div>
 
-      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3 text-center">
-        <p className="text-xs text-slate-400">
+      <div className={`border rounded-2xl p-3 text-center ${
+        isLight
+          ? 'bg-white border-slate-200 text-slate-700 shadow-xs'
+          : isNeon
+          ? 'bg-[#04241d]/80 border-emerald-500/30 text-emerald-300'
+          : 'bg-slate-900/60 border-slate-800 text-slate-400'
+      }`}>
+        <p className={`text-xs font-medium ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
           🪙 {t.tricksTipBottom}
         </p>
       </div>

@@ -1,9 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Achievement, Language, LeaderboardEntry, PlayerProfile, ShopItem, UserStats } from '../types';
+import { Achievement, Language, LeaderboardEntry, PlayerProfile, ShopItem, UserStats, ThemeMode } from '../types';
 import { sounds } from '../utils/audio';
 
 interface GameContextType {
+  themeMode: ThemeMode;
+  toggleThemeMode: () => void;
+  setThemeMode: (mode: ThemeMode) => void;
   playerName: string;
+  playerAvatar: string;
   setPlayerName: (name: string) => void;
   playerLevel: number;
   playerTitle: string;
@@ -214,7 +218,7 @@ const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
 const DEFAULT_PROFILES: PlayerProfile[] = [
   {
     id: 'prof_1',
-    name: 'Kakak Dimas',
+    name: 'Kakak Luffy',
     avatar: '😎',
     xp: 320,
     coins: 180,
@@ -235,8 +239,8 @@ const DEFAULT_PROFILES: PlayerProfile[] = [
   },
   {
     id: 'prof_2',
-    name: 'Adik Aisyah',
-    avatar: '🌸',
+    name: 'Adik Naoki',
+    avatar: '👦',
     xp: 80,
     coins: 90,
     stats: {
@@ -261,9 +265,23 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Profiles store
   const [profiles, setProfiles] = useState<PlayerProfile[]>(() => {
-    const saved = localStorage.getItem('mm_profiles_v3');
+    const saved = localStorage.getItem('mm_profiles_v4') || localStorage.getItem('mm_profiles_v3');
     if (saved) {
-      try { return JSON.parse(saved); } catch {}
+      try {
+        const parsed: PlayerProfile[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // If the profile is the old default 'Kakak Dimas' or 'Adik Aisyah', automatically update
+          return parsed.map(p => {
+            if (p.id === 'prof_1' && (p.name === 'Kakak Dimas' || !p.name)) {
+              return { ...p, name: 'Kakak Luffy' };
+            }
+            if (p.name === 'Adik Aisyah' || (p.id === 'prof_2' && (p.name === 'Adik Aisyah' || !p.name))) {
+              return { ...p, name: 'Adik Naoki', avatar: p.avatar === '🌸' ? '👦' : p.avatar };
+            }
+            return p;
+          });
+        }
+      } catch {}
     }
     return DEFAULT_PROFILES;
   });
@@ -276,7 +294,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0] || DEFAULT_PROFILES[0];
 
   // Active player state derived from active profile
-  const [playerName, setPlayerNameState] = useState<string>(activeProfile.name);
+  const [playerName, setPlayerNameState] = useState<string>(
+    activeProfile.name === 'Kakak Dimas'
+      ? 'Kakak Luffy'
+      : activeProfile.name === 'Adik Aisyah'
+      ? 'Adik Naoki'
+      : activeProfile.name
+  );
   const [xp, setXp] = useState<number>(activeProfile.xp);
   const [coins, setCoins] = useState<number>(activeProfile.coins);
   const [stats, setStats] = useState<UserStats>(activeProfile.stats);
@@ -288,6 +312,26 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const saved = localStorage.getItem('mm_sound');
     return saved !== null ? saved === 'true' : true;
   });
+
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
+    const saved = localStorage.getItem('mm_theme_mode') as ThemeMode;
+    return saved === 'light' || saved === 'neon' || saved === 'dark' ? saved : 'dark';
+  });
+
+  const setThemeMode = (mode: ThemeMode) => {
+    sounds.playTap();
+    setThemeModeState(mode);
+    localStorage.setItem('mm_theme_mode', mode);
+  };
+
+  const toggleThemeMode = () => {
+    sounds.playTap();
+    setThemeModeState(prev => {
+      const next: ThemeMode = prev === 'dark' ? 'light' : prev === 'light' ? 'neon' : 'dark';
+      localStorage.setItem('mm_theme_mode', next);
+      return next;
+    });
+  };
 
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem('mm_lang') as Language;
@@ -668,7 +712,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <GameContext.Provider
       value={{
+        themeMode,
+        toggleThemeMode,
+        setThemeMode,
         playerName,
+        playerAvatar: activeProfile.avatar || '😎',
         setPlayerName,
         playerLevel,
         playerTitle,

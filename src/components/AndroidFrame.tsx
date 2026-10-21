@@ -59,7 +59,9 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
   children,
   onOpenShop
 }) => {
-  const { soundEnabled, toggleSound, coins, isVip, language } = useGame();
+  const { soundEnabled, toggleSound, coins, isVip, language, themeMode } = useGame();
+  const isLight = themeMode === 'light';
+  const isNeon = themeMode === 'neon';
 
   // Detection states
   const [isPhysicalMobile, setIsPhysicalMobile] = useState<boolean>(false);
@@ -90,14 +92,15 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
   // =========================================================================
   // 1. NATIVE EDGE-TO-EDGE FULLSCREEN MODE (REAL HP / TABLET / TWA / PWA)
   // =========================================================================
-  // When opened on a real Phone or Tablet:
-  // - 100% NO simulator frame, NO fake status bar, NO fake camera notch!
-  // - Pure Edge-to-Edge native experience!
-  // - Fits 100% viewport (h-dvh) with safe-area support.
-  // =========================================================================
   if (isPhysicalMobile || forceNativeFullscreen) {
     return (
-      <div className="w-full h-dvh max-h-dvh bg-slate-950 text-slate-100 flex flex-col overflow-hidden select-none relative">
+      <div className={`w-full h-dvh max-h-dvh ${
+        isLight 
+          ? 'bg-slate-50 text-slate-900' 
+          : isNeon
+          ? 'bg-[#021310] text-emerald-100'
+          : 'bg-slate-950 text-slate-100'
+      } flex flex-col overflow-hidden select-none relative transition-colors duration-200`}>
         {/* If on desktop user manually forced fullscreen preview, show a floating toggle back */}
         {forceNativeFullscreen && !isPhysicalMobile && (
           <div className="absolute top-2 right-2 z-50">
@@ -121,15 +124,22 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
   // =========================================================================
   // 2. DESKTOP BROWSER / PC SIMULATOR MODE
   // =========================================================================
-  // Provides developers & reviewers with a multi-device simulator:
-  // - 📱 Mode HP (Phone Simulator 390px)
-  // - 📲 Mode Tablet (Tablet Simulator 720px + Portrait/Landscape toggle)
-  // - 💻 Mode Lebar (Widescreen responsive)
-  // =========================================================================
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-between p-2 sm:p-4 md:p-6 select-none font-sans">
+    <div className={`min-h-screen ${
+      isLight 
+        ? 'bg-slate-100 text-slate-900' 
+        : isNeon
+        ? 'bg-[#010e0c] text-emerald-100'
+        : 'bg-slate-950 text-slate-100'
+    } flex flex-col items-center justify-between p-2 sm:p-4 md:p-6 select-none font-sans transition-colors duration-200`}>
       {/* Top Simulator Control Bar */}
-      <header className="w-full max-w-5xl flex flex-wrap items-center justify-between gap-2.5 py-2.5 px-3.5 mb-2 sm:mb-4 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-800 shadow-xl">
+      <header className={`w-full max-w-5xl flex flex-wrap items-center justify-between gap-2.5 py-2.5 px-3.5 mb-2 sm:mb-4 ${
+        isLight
+          ? 'bg-white border-slate-200 shadow-md text-slate-800'
+          : isNeon
+          ? 'bg-[#04201b]/95 border-emerald-500/40 shadow-xl text-emerald-100'
+          : 'bg-slate-900/90 border-slate-800 shadow-xl text-slate-100'
+      } backdrop-blur-md rounded-2xl border transition-colors duration-200`}>
         {/* Brand & Title */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center font-black text-slate-950 shadow-md">
@@ -137,7 +147,7 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm sm:text-base tracking-tight text-white font-display">
+              <span className={`font-bold text-sm sm:text-base tracking-tight ${isLight ? 'text-slate-900' : isNeon ? 'text-emerald-100' : 'text-white'} font-display`}>
                 Mencongak Master Pro
               </span>
               {isVip && (
@@ -240,14 +250,20 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
       <main className="w-full flex-1 flex items-center justify-center py-2">
         {/* OPTION A: PHONE SIMULATOR SHELL */}
         {simulatorMode === 'phone' && (
-          <div className="relative w-full max-w-[400px] aspect-[9/19.5] max-h-[90vh] bg-slate-900 rounded-[44px] p-3 shadow-2xl shadow-amber-500/10 ring-1 ring-slate-700/80 border-4 border-slate-800 flex flex-col transition-all duration-300">
+          <div className={`relative w-full max-w-[425px] aspect-[9/19.5] max-h-[92vh] ${
+            isLight
+              ? 'bg-slate-200 border-4 border-slate-300 shadow-2xl ring-1 ring-slate-300'
+              : isNeon
+              ? 'bg-[#052620] border-4 border-emerald-500/50 shadow-2xl ring-1 ring-emerald-500/40 shadow-emerald-500/10'
+              : 'bg-slate-900 border-4 border-slate-800 shadow-2xl ring-1 ring-slate-700/80 shadow-amber-500/10'
+          } rounded-[44px] p-2.5 sm:p-3 flex flex-col transition-all duration-300`}>
             {/* Camera Punchhole & Speaker notch */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-20 h-4 bg-slate-950 rounded-full flex items-center justify-center z-50 pointer-events-none">
-              <div className="w-2.5 h-2.5 rounded-full bg-slate-800 ring-1 ring-slate-700" />
+            <div className={`absolute top-4 left-1/2 -translate-x-1/2 w-20 h-4 ${isLight ? 'bg-slate-300' : isNeon ? 'bg-[#021310]' : 'bg-slate-950'} rounded-full flex items-center justify-center z-50 pointer-events-none`}>
+              <div className={`w-2.5 h-2.5 rounded-full ${isLight ? 'bg-slate-400' : 'bg-slate-800'} ring-1 ring-slate-700`} />
             </div>
 
             {/* Android Status Bar */}
-            <div className="h-7 w-full px-5 flex items-center justify-between text-[11px] font-semibold text-slate-400 select-none shrink-0 z-40">
+            <div className={`h-7 w-full px-5 flex items-center justify-between text-[11px] font-semibold ${isLight ? 'text-slate-700' : isNeon ? 'text-emerald-300' : 'text-slate-400'} select-none shrink-0 z-40`}>
               <span>{currentTime}</span>
               <div className="flex items-center gap-2 text-[10px]">
                 <span>5G</span>
@@ -257,13 +273,19 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
             </div>
 
             {/* Internal Smartphone Display Screen */}
-            <div className="relative flex-1 w-full bg-slate-950 rounded-[32px] overflow-hidden flex flex-col border border-slate-800/80 shadow-inner">
+            <div className={`relative flex-1 w-full ${
+              isLight 
+                ? 'bg-slate-50 text-slate-900 border-slate-200 shadow-inner' 
+                : isNeon 
+                ? 'bg-[#021310] text-emerald-100 border-emerald-500/30' 
+                : 'bg-slate-950 text-slate-100 border-slate-800/80'
+            } rounded-[32px] overflow-hidden flex flex-col border shadow-inner transition-colors duration-200`}>
               {children}
             </div>
 
             {/* Android Bottom Navigation Pill */}
             <div className="h-4 w-full flex items-center justify-center shrink-0">
-              <div className="w-28 h-1 bg-slate-600 rounded-full opacity-60" />
+              <div className={`w-28 h-1 ${isLight ? 'bg-slate-400' : isNeon ? 'bg-emerald-500/50' : 'bg-slate-600'} rounded-full opacity-60`} />
             </div>
           </div>
         )}
@@ -271,19 +293,25 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
         {/* OPTION B: TABLET SIMULATOR SHELL (iPad / Android Tablet) */}
         {simulatorMode === 'tablet' && (
           <div
-            className={`relative bg-slate-900 rounded-[36px] p-4 shadow-2xl shadow-sky-500/10 ring-1 ring-slate-700/80 border-4 border-slate-800 flex flex-col transition-all duration-300 ${
+            className={`relative ${
+              isLight
+                ? 'bg-slate-200 border-4 border-slate-300 shadow-2xl ring-1 ring-slate-300'
+                : isNeon
+                ? 'bg-[#052620] border-4 border-emerald-500/50 shadow-2xl ring-1 ring-emerald-500/40 shadow-emerald-500/10'
+                : 'bg-slate-900 border-4 border-slate-800 shadow-2xl ring-1 ring-slate-700/80 shadow-sky-500/10'
+            } rounded-[36px] p-4 flex flex-col transition-all duration-300 ${
               tabletOrientation === 'portrait'
                 ? 'w-full max-w-[680px] aspect-[3/4] max-h-[90vh]'
                 : 'w-full max-w-[940px] aspect-[4/3] max-h-[85vh]'
             }`}
           >
             {/* Tablet Front Camera Notch */}
-            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-950 rounded-full border border-slate-700 flex items-center justify-center z-50 pointer-events-none">
-              <div className="w-1 h-1 rounded-full bg-slate-600" />
+            <div className={`absolute top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 ${isLight ? 'bg-slate-300' : isNeon ? 'bg-[#021310]' : 'bg-slate-950'} rounded-full border border-slate-700 flex items-center justify-center z-50 pointer-events-none`}>
+              <div className={`w-1 h-1 rounded-full ${isLight ? 'bg-slate-400' : 'bg-slate-600'}`} />
             </div>
 
             {/* Tablet Status Header */}
-            <div className="h-6 w-full px-4 flex items-center justify-between text-[10px] font-semibold text-slate-400 select-none shrink-0 z-40 mb-1">
+            <div className={`h-6 w-full px-4 flex items-center justify-between text-[10px] font-semibold ${isLight ? 'text-slate-700' : isNeon ? 'text-emerald-300' : 'text-slate-400'} select-none shrink-0 z-40 mb-1`}>
               <span>{currentTime} · Mode Tablet</span>
               <div className="flex items-center gap-2">
                 <span>Wi-Fi 🛜</span>
@@ -292,7 +320,13 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
             </div>
 
             {/* Tablet Display Screen */}
-            <div className="relative flex-1 w-full bg-slate-950 rounded-[24px] overflow-hidden flex flex-col border border-slate-800/80 shadow-inner">
+            <div className={`relative flex-1 w-full ${
+              isLight 
+                ? 'bg-slate-50 text-slate-900 border-slate-200 shadow-inner' 
+                : isNeon 
+                ? 'bg-[#021310] text-emerald-100 border-emerald-500/30' 
+                : 'bg-slate-950 text-slate-100 border-slate-800/80'
+            } rounded-[24px] overflow-hidden flex flex-col border shadow-inner transition-colors duration-200`}>
               <div className="w-full h-full max-w-2xl mx-auto flex flex-col overflow-hidden relative">
                 {children}
               </div>
@@ -300,14 +334,20 @@ export const AndroidFrame: React.FC<AndroidFrameProps> = ({
 
             {/* Tablet Bottom Home Bar */}
             <div className="h-3 w-full flex items-center justify-center shrink-0 mt-1">
-              <div className="w-36 h-1 bg-slate-600 rounded-full opacity-60" />
+              <div className={`w-36 h-1 ${isLight ? 'bg-slate-400' : isNeon ? 'bg-emerald-500/50' : 'bg-slate-600'} rounded-full opacity-60`} />
             </div>
           </div>
         )}
 
         {/* OPTION C: WIDE DESKTOP RESPONSIVE CONTAINER */}
         {simulatorMode === 'wide' && (
-          <div className="w-full max-w-3xl min-h-[640px] max-h-[90vh] bg-slate-900/90 backdrop-blur-md rounded-3xl border border-slate-800 shadow-2xl p-3 sm:p-5 flex flex-col overflow-hidden">
+          <div className={`w-full max-w-3xl min-h-[640px] max-h-[90vh] ${
+            isLight
+              ? 'bg-white border-slate-200 shadow-xl'
+              : isNeon
+              ? 'bg-[#04201b]/95 border-emerald-500/40 shadow-2xl'
+              : 'bg-slate-900/90 border-slate-800 shadow-2xl'
+          } backdrop-blur-md rounded-3xl border p-3 sm:p-5 flex flex-col overflow-hidden transition-colors duration-200`}>
             <div className="w-full h-full flex flex-col overflow-hidden relative">
               {children}
             </div>

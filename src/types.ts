@@ -1,6 +1,8 @@
-export type GameMode = 'blitz' | 'survival' | 'duel' | 'tricks' | 'daily' | 'custom';
+export type GameMode = 'blitz' | 'survival' | 'sprint' | 'audio' | 'focus' | 'duel' | 'tricks' | 'daily' | 'custom';
 
 export type Language = 'id' | 'en';
+
+export type ThemeMode = 'dark' | 'light' | 'neon';
 
 export type DifficultyLevel = 'sd_awal' | 'sd_lanjut' | 'smp' | 'sma_pro';
 
@@ -27,6 +29,7 @@ export interface UserStats {
   totalWrong: number;
   highestStreak: number;
   bestBlitzScore: number;
+  bestSprintTime?: number;
   totalDuelsWon: number;
   dailyStreak: number;
   lastPlayedDate: string;

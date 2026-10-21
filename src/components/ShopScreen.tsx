@@ -14,7 +14,9 @@ interface ShopScreenProps {
 export const ShopScreen: React.FC<ShopScreenProps> = ({
   onOpenCertificate
 }) => {
-  const { shopItems, buyShopItem, coins, isVip, language } = useGame();
+  const { shopItems, buyShopItem, coins, isVip, language, themeMode } = useGame();
+  const isLight = themeMode === 'light';
+  const isNeon = themeMode === 'neon';
   const t = getTranslation(language);
 
   const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null);
@@ -106,39 +108,49 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
   const isCertAccessible = certItem?.owned || isVip;
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-3.5 sm:p-4 bg-slate-950 text-slate-100 select-none overflow-y-auto">
+    <div className={`flex-1 flex flex-col justify-between p-3.5 sm:p-4 ${
+      isLight ? 'bg-slate-50 text-slate-900' : isNeon ? 'bg-[#021411] text-emerald-100' : 'bg-slate-950 text-slate-100'
+    } select-none overflow-y-auto transition-colors duration-200`}>
       <div>
         {/* Header */}
         <div className="flex items-center justify-between pt-1">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${
+              isLight ? 'text-amber-800' : isNeon ? 'text-emerald-400' : 'text-amber-500'
+            }`}>
               {t.shopOfficialHeader}
             </span>
-            <h1 className="text-xl font-black text-white tracking-tight font-display">
+            <h1 className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'} tracking-tight font-display`}>
               {t.shopTitle}
             </h1>
           </div>
-          <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 rounded-2xl shadow-sm">
-            <Coins className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-black text-amber-300 font-mono-math">
+          <div className={`flex items-center gap-1.5 ${
+            isLight
+              ? 'bg-amber-100 border-2 border-amber-300 text-amber-950 font-black'
+              : isNeon
+              ? 'bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-bold'
+              : 'bg-amber-500/15 border border-amber-500/30 text-amber-300'
+          } px-3 py-1.5 rounded-2xl shadow-xs`}>
+            <Coins className="w-4 h-4 text-amber-500" />
+            <span className="text-xs font-mono-math">
               {coins} {t.coins}
             </span>
           </div>
         </div>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className={`text-xs ${isLight ? 'text-slate-600 font-medium' : isNeon ? 'text-emerald-300/80 font-medium' : 'text-slate-400'} mt-0.5`}>
           {t.shopSubtitle}
         </p>
 
         {/* Feedback Banners */}
         {purchaseSuccess && (
-          <div className="my-2.5 p-2.5 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 font-bold flex items-center gap-2 animate-bounce shadow-md">
+          <div className="my-2.5 p-2.5 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-xs text-emerald-800 font-extrabold flex items-center gap-2 animate-bounce shadow-md">
             <Check className="w-4 h-4 shrink-0" />
             <span>{purchaseSuccess}</span>
           </div>
         )}
 
         {purchaseError && (
-          <div className="my-2.5 p-2.5 bg-rose-500/20 border border-rose-500/40 rounded-xl text-xs text-rose-300 font-bold flex items-center gap-2 animate-shake shadow-md">
+          <div className="my-2.5 p-2.5 bg-rose-500/20 border border-rose-500/40 rounded-xl text-xs text-rose-800 font-extrabold flex items-center gap-2 animate-shake shadow-md">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{purchaseError}</span>
           </div>
@@ -146,11 +158,13 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
 
         {/* 1. Featured VIP Promo Banner (Clean & Beautiful) */}
         {vipItem && (
-          <div className="my-3 p-4 rounded-3xl bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-slate-900/90 border border-amber-500/40 relative overflow-hidden shadow-xl">
+          <div className={`my-3 p-4 rounded-3xl ${
+            isLight ? 'bg-gradient-to-br from-amber-100 via-amber-50 to-orange-50 border-2 border-amber-300 text-slate-900 shadow-xl' : 'bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-slate-900/90 border border-amber-500/40 text-slate-100 shadow-xl'
+          } relative overflow-hidden`}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <div className="flex items-center gap-1.5 text-amber-400 font-black text-xs">
+                  <div className="flex items-center gap-1.5 text-amber-500 font-black text-xs">
                     <Crown className="w-4 h-4" />
                     <span>{t.vipPassTitle}</span>
                   </div>
@@ -161,49 +175,51 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                   )}
                 </div>
 
-                <h3 className="text-base font-black text-white mt-0.5">
+                <h3 className={`text-base font-black ${isLight ? 'text-slate-900' : 'text-white'} mt-0.5`}>
                   {t.vipPassHeading}
                 </h3>
 
-                <ul className="text-xs text-slate-300 space-y-1.5 mt-2.5">
+                <ul className={`text-xs ${isLight ? 'text-slate-700 font-medium' : 'text-slate-300'} space-y-1.5 mt-2.5`}>
                   <li className="flex items-start gap-2">
-                    <span className="text-amber-400 font-bold shrink-0 mt-0.5">✓</span>
+                    <span className="text-amber-500 font-extrabold shrink-0 mt-0.5">✓</span>
                     <span>{t.vipFeature1}</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-amber-400 font-bold shrink-0 mt-0.5">✓</span>
+                    <span className="text-amber-500 font-extrabold shrink-0 mt-0.5">✓</span>
                     <span>{t.vipFeature2}</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-amber-400 font-bold shrink-0 mt-0.5">✓</span>
+                    <span className="text-amber-500 font-extrabold shrink-0 mt-0.5">✓</span>
                     <span>{t.vipFeature3}</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-amber-400 font-bold shrink-0 mt-0.5">✓</span>
+                    <span className="text-amber-500 font-extrabold shrink-0 mt-0.5">✓</span>
                     <span>{t.vipFeature4}</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="w-12 h-12 rounded-2xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-2xl shadow-inner shrink-0">
+              <div className={`w-12 h-12 rounded-2xl ${
+                isLight ? 'bg-amber-200/80 border border-amber-300' : 'bg-amber-400/20 border border-amber-400/30'
+              } flex items-center justify-center text-2xl shadow-inner shrink-0`}>
                 👑
               </div>
             </div>
 
             {/* Price & Action Area */}
-            <div className="mt-4 pt-3 border-t border-amber-500/25 flex items-center justify-between gap-3">
+            <div className={`mt-4 pt-3 border-t ${isLight ? 'border-amber-300' : 'border-amber-500/25'} flex items-center justify-between gap-3`}>
               <div>
-                <span className="text-[10px] text-slate-400 line-through block">
+                <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'} line-through block`}>
                   {language === 'id' ? 'Harga Asli:' : 'Original:'} {getLocalizedPrice(vipItem.originalPriceIdr || 'Rp 49.000', language)}
                 </span>
-                <div className="text-lg font-black text-amber-300 font-mono-math leading-tight">
+                <div className="text-lg font-black text-amber-600 font-mono-math leading-tight">
                   {getLocalizedPrice(vipItem.priceIdr, language)}
                 </div>
               </div>
 
               {isVip ? (
-                <div className="px-3.5 py-2 bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                <div className="px-3.5 py-2 bg-emerald-500/20 border border-emerald-500/50 text-emerald-800 font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-sm">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{t.vipActiveForever}</span>
                 </div>
               ) : (
@@ -221,11 +237,11 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
         {/* 2. Top-Up Paket Koin (In-App Purchases) */}
         <div className="my-3">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-extrabold text-slate-200 flex items-center gap-1.5">
-              <Coins className="w-3.5 h-3.5 text-amber-400" />
+            <h3 className={`text-xs font-extrabold ${isLight ? 'text-slate-900' : 'text-slate-200'} flex items-center gap-1.5`}>
+              <Coins className="w-3.5 h-3.5 text-amber-500" />
               {t.coinPacksTitle}
             </h3>
-            <span className="text-[10px] text-slate-400">{language === 'id' ? 'Saldo' : 'Balance'}: {coins} {t.coins}</span>
+            <span className={`text-[10px] ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>{language === 'id' ? 'Saldo' : 'Balance'}: {coins} {t.coins}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -233,7 +249,11 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
               <button
                 key={pack.id}
                 onClick={() => handleOpenIapModal(pack)}
-                className="bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-400/50 p-2.5 rounded-2xl flex flex-col items-center text-center transition-all cursor-pointer shadow-md active:scale-95 relative"
+                className={`${
+                  isLight
+                    ? 'bg-white border-2 border-slate-200/90 hover:border-amber-400 text-slate-900 shadow-md'
+                    : 'bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-400/50 text-white shadow-md'
+                } p-2.5 rounded-2xl flex flex-col items-center text-center transition-all cursor-pointer active:scale-95 relative`}
               >
                 {pack.discountBadge && (
                   <span className="absolute -top-2 bg-amber-500 text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-full shadow-sm">
@@ -241,13 +261,15 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                   </span>
                 )}
                 <div className="text-2xl mt-1 mb-0.5">{pack.icon}</div>
-                <div className="text-[10px] font-medium text-slate-400 truncate w-full">
+                <div className={`text-[10px] font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'} truncate w-full`}>
                   {pack.id === 'coin_pack_100' ? t.packBag : pack.id === 'coin_pack_500' ? t.packChest : t.packVault}
                 </div>
-                <div className="font-extrabold text-xs text-white">
+                <div className={`font-extrabold text-xs ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   +{pack.coinsReward} {t.coins}
                 </div>
-                <div className="text-[10px] text-amber-400 font-mono-math font-bold mt-1 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 w-full truncate">
+                <div className={`text-[10px] ${
+                  isLight ? 'text-amber-700 bg-amber-100 border-amber-300' : 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                } font-mono-math font-bold mt-1 px-2 py-0.5 rounded-md border w-full truncate`}>
                   {getLocalizedPrice(pack.priceIdr, language)}
                 </div>
               </button>
@@ -257,23 +279,25 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
 
         {/* 3. Certificate Licensing Card (Clean & Balanced) */}
         {certItem && (
-          <div className="my-2.5 p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-3 shadow-md">
+          <div className={`my-2.5 p-3.5 rounded-2xl ${
+            isLight ? 'bg-white border-2 border-slate-200 shadow-md text-slate-900' : 'bg-slate-900/90 border border-slate-800 text-slate-100 shadow-md'
+          } flex items-center justify-between gap-3`}>
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+              <div className={`w-11 h-11 rounded-2xl ${isLight ? 'bg-amber-100 border border-amber-200' : 'bg-amber-400/10 border border-amber-400/30'} flex items-center justify-center text-2xl shrink-0 shadow-inner`}>
                 🎓
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-bold text-xs text-white leading-tight">
+                  <h4 className={`font-bold text-xs ${isLight ? 'text-slate-900' : 'text-white'} leading-tight`}>
                     {t.certCardTitle}
                   </h4>
                   {isCertAccessible && (
-                    <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.2 rounded">
+                    <span className="text-[9px] bg-emerald-500/20 text-emerald-700 font-extrabold px-1.5 py-0.2 rounded">
                       {t.certCardLicensed}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
+                <p className={`text-[11px] ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'} mt-0.5 leading-tight`}>
                   {isCertAccessible
                     ? t.certCardDescReady
                     : `${t.certCardDescBuy} (${getLocalizedPrice(certItem.priceIdr, language)})`}
@@ -288,14 +312,16 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                     sounds.playTap();
                     onOpenCertificate();
                   }}
-                  className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 whitespace-nowrap shadow-sm"
+                  className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-800 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 whitespace-nowrap shadow-sm"
                 >
                   {t.printCertificate}
                 </button>
               ) : (
                 <button
                   onClick={() => handleOpenIapModal(certItem)}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 whitespace-nowrap"
+                  className={`px-3 py-2 ${
+                    isLight ? 'bg-amber-100 border-2 border-amber-300 text-amber-950 hover:bg-amber-200' : 'bg-slate-800 border border-slate-700 text-amber-300'
+                  } text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 whitespace-nowrap`}
                 >
                   {t.buyLicense} ({getLocalizedPrice(certItem.priceIdr, language)})
                 </button>
@@ -307,10 +333,10 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
         {/* 4. Power-ups Section (Dibeli Pakai Koin Game) */}
         <div className="mt-3">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-extrabold text-slate-200">
+            <h3 className={`text-xs font-extrabold ${isLight ? 'text-slate-900' : 'text-slate-200'}`}>
               {t.powerupsHeading}
             </h3>
-            <span className="text-[10px] text-slate-400">{t.powerupsSubheading}</span>
+            <span className={`text-[10px] ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>{t.powerupsSubheading}</span>
           </div>
 
           <div className="space-y-2">
@@ -319,20 +345,24 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
               return (
                 <div
                   key={item.id}
-                  className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-md"
+                  className={`border rounded-2xl p-3 flex items-center justify-between gap-3 shadow-md ${
+                    isLight ? 'bg-white border-2 border-slate-200 text-slate-900' : 'bg-slate-900/90 border-slate-800 text-slate-100'
+                  }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-xl shrink-0 shadow-inner">
+                    <div className={`w-10 h-10 rounded-xl ${isLight ? 'bg-amber-100/80 border border-amber-200' : 'bg-slate-800/80 border border-slate-700/60'} flex items-center justify-center text-xl shrink-0 shadow-inner`}>
                       {item.icon}
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-extrabold text-xs text-white">
+                      <h4 className={`font-extrabold text-xs ${isLight ? 'text-slate-900' : 'text-white'}`}>
                         {localized.name || item.name}
                       </h4>
-                      <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                      <p className={`text-[11px] ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'} leading-tight mt-0.5`}>
                         {localized.description || item.description}
                       </p>
-                      <span className="inline-block text-[10px] bg-slate-800 text-emerald-400 font-bold px-2 py-0.5 rounded-md mt-1 border border-slate-700/50">
+                      <span className={`inline-block text-[10px] ${
+                        isLight ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold' : 'bg-slate-800 text-emerald-400 font-bold border border-slate-700/50'
+                      } px-2 py-0.5 rounded-md mt-1`}>
                         {t.ownedLabel} {item.quantity || 0}
                       </span>
                     </div>
@@ -342,11 +372,15 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
                     onClick={() => handleBuyWithCoins(item)}
                     className={`px-3 py-2 rounded-xl border text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 shadow-sm ${
                       coins >= (item.priceCoins || 0)
-                        ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-300 ring-1 ring-amber-500/20'
+                        ? isLight
+                          ? 'bg-amber-100 hover:bg-amber-200 border-amber-400 text-amber-950'
+                          : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-amber-300 ring-1 ring-amber-500/20'
+                        : isLight
+                        ? 'bg-slate-100 border-slate-300 text-slate-400'
                         : 'bg-slate-800 border-slate-700 text-slate-500 hover:border-slate-600'
                     }`}
                   >
-                    <Coins className="w-3.5 h-3.5 text-amber-400" />
+                    <Coins className="w-3.5 h-3.5 text-amber-500" />
                     <span>{item.priceCoins} {t.coins}</span>
                   </button>
                 </div>
