@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Trophy, Flame, Zap, Award, Edit3, Check, RotateCcw, Users, Plus, UserCheck, Trash2, Sun, Moon, Palette } from 'lucide-react';
+import { X, User, Trophy, Flame, Zap, Award, Edit3, Check, RotateCcw, Users, Plus, UserCheck, Trash2, Sun, Moon, Palette, Keyboard, CheckSquare } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import { sounds } from '../utils/audio';
 import { getTranslation, getLocalizedAchievement } from '../utils/translations';
@@ -34,7 +34,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     deleteProfile,
     language,
     themeMode,
-    setThemeMode
+    setThemeMode,
+    defaultInputMode,
+    setDefaultInputMode
   } = useGame();
 
   const isLight = themeMode === 'light';
@@ -221,6 +223,106 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Opsi Pengaturan Jawaban: Pilihan Ganda vs Ketik Sendiri */}
+          <div className={`${
+            isLight
+              ? 'bg-white border-2 border-slate-200 text-slate-900 shadow-sm'
+              : isNeon
+              ? 'bg-[#04241d]/90 border border-emerald-500/40 text-emerald-100 shadow-lg'
+              : 'bg-slate-950/90 border border-slate-800 text-slate-100'
+          } p-3 rounded-2xl space-y-2`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className={`text-[11px] font-bold ${
+                  isLight ? 'text-slate-900 font-extrabold' : isNeon ? 'text-emerald-300 font-bold' : 'text-slate-200'
+                } flex items-center gap-1.5`}>
+                  <Keyboard className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{t.answerInputModeTitle}</span>
+                </span>
+                <p className={`text-[9px] ${isLight ? 'text-slate-500' : 'text-slate-400'} mt-0.5`}>
+                  {t.answerInputModeSubtitle}
+                </p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                isLight
+                  ? 'bg-amber-100 text-amber-950 border-amber-300'
+                  : isNeon
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
+                  : 'bg-slate-800 text-slate-300 border-slate-700'
+              }`}>
+                {defaultInputMode === 'options' ? (language === 'id' ? '🔘 4 Pilihan' : '🔘 Options') : (language === 'id' ? '⌨️ Numpad' : '⌨️ Keypad')}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {/* Option 1: Pilihan Ganda (4 Opsi) */}
+              <button
+                onClick={() => setDefaultInputMode('options')}
+                className={`p-2.5 rounded-xl border flex flex-col items-start text-left transition-all cursor-pointer ${
+                  defaultInputMode === 'options'
+                    ? isLight
+                      ? 'bg-amber-100 border-2 border-amber-500 text-amber-950 font-black shadow-sm ring-1 ring-amber-400/50'
+                      : isNeon
+                      ? 'bg-emerald-500/25 border-2 border-emerald-400 text-emerald-200 shadow-md ring-1 ring-emerald-400/40'
+                      : 'bg-amber-500/20 border-2 border-amber-400 text-amber-300 shadow-md ring-1 ring-amber-400/40'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700'
+                    : isNeon
+                    ? 'bg-[#021411] border border-emerald-500/30 text-emerald-400/70 hover:text-emerald-200'
+                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 w-full mb-1">
+                  <CheckSquare className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="text-xs font-bold leading-tight">{t.inputModeOptionsTitle}</span>
+                  {defaultInputMode === 'options' && (
+                    <span className="ml-auto text-[9px] bg-amber-500 text-slate-950 px-1 rounded font-black">✓</span>
+                  )}
+                </div>
+                <span className={`text-[9px] ${
+                  defaultInputMode === 'options' 
+                    ? isLight ? 'text-amber-900' : 'text-amber-200/90' 
+                    : isLight ? 'text-slate-500' : 'text-slate-400'
+                }`}>
+                  {t.inputModeOptionsSubtitle}
+                </span>
+              </button>
+
+              {/* Option 2: Ketik Sendiri (Numpad) */}
+              <button
+                onClick={() => setDefaultInputMode('keypad')}
+                className={`p-2.5 rounded-xl border flex flex-col items-start text-left transition-all cursor-pointer ${
+                  defaultInputMode === 'keypad'
+                    ? isLight
+                      ? 'bg-amber-100 border-2 border-amber-500 text-amber-950 font-black shadow-sm ring-1 ring-amber-400/50'
+                      : isNeon
+                      ? 'bg-emerald-500/25 border-2 border-emerald-400 text-emerald-200 shadow-md ring-1 ring-emerald-400/40'
+                      : 'bg-amber-500/20 border-2 border-amber-400 text-amber-300 shadow-md ring-1 ring-amber-400/40'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700'
+                    : isNeon
+                    ? 'bg-[#021411] border border-emerald-500/30 text-emerald-400/70 hover:text-emerald-200'
+                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 w-full mb-1">
+                  <Keyboard className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="text-xs font-bold leading-tight">{t.inputModeKeypadTitle}</span>
+                  {defaultInputMode === 'keypad' && (
+                    <span className="ml-auto text-[9px] bg-amber-500 text-slate-950 px-1 rounded font-black">✓</span>
+                  )}
+                </div>
+                <span className={`text-[9px] ${
+                  defaultInputMode === 'keypad' 
+                    ? isLight ? 'text-amber-900' : 'text-amber-200/90' 
+                    : isLight ? 'text-slate-500' : 'text-slate-400'
+                }`}>
+                  {t.inputModeKeypadSubtitle}
+                </span>
+              </button>
             </div>
           </div>
 

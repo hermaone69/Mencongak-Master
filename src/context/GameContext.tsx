@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Achievement, Language, LeaderboardEntry, PlayerProfile, ShopItem, UserStats, ThemeMode } from '../types';
+import { Achievement, Language, LeaderboardEntry, PlayerProfile, ShopItem, UserStats, ThemeMode, AnswerInputMode } from '../types';
 import { sounds } from '../utils/audio';
 
 interface GameContextType {
   themeMode: ThemeMode;
   toggleThemeMode: () => void;
   setThemeMode: (mode: ThemeMode) => void;
+  defaultInputMode: AnswerInputMode;
+  setDefaultInputMode: (mode: AnswerInputMode) => void;
   playerName: string;
   playerAvatar: string;
   setPlayerName: (name: string) => void;
@@ -333,6 +335,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const [defaultInputMode, setDefaultInputModeState] = useState<AnswerInputMode>(() => {
+    const saved = localStorage.getItem('mm_input_mode') as AnswerInputMode;
+    return saved === 'keypad' || saved === 'options' ? saved : 'options';
+  });
+
+  const setDefaultInputMode = (mode: AnswerInputMode) => {
+    sounds.playTap();
+    setDefaultInputModeState(mode);
+    localStorage.setItem('mm_input_mode', mode);
+  };
+
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem('mm_lang') as Language;
     return saved === 'en' || saved === 'id' ? saved : 'id';
@@ -634,14 +647,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const buyShopItem = (itemId: string): boolean => {
-    const item = shopItems.find(i => i.id === itemId);
+    // Resolve aliases between Play Console SKUs and internal item IDs (supporting hyphens and underscores)
+    const resolvedId = 
+      itemId === 'coins_pack_3' || itemId === 'coins-pack-3' || itemId === 'coin_pack_1500' ? 'coin_pack_1500' :
+      itemId === 'coins_pack_2' || itemId === 'coins-pack-2' || itemId === 'coin_pack_500' ? 'coin_pack_500' :
+      itemId === 'coins_pack_1' || itemId === 'coins-pack-1' || itemId === 'coin_pack_100' ? 'coin_pack_100' :
+      itemId === 'vip_pass' || itemId === 'vip-pass' || itemId === 'vip_pro_pass' ? 'vip_pro_pass' :
+      itemId === 'cert_official' || itemId === 'cert-official' || itemId === 'cert_pro' ? 'cert_pro' : itemId;
+
+    const item = shopItems.find(i => i.id === resolvedId || i.id === itemId);
     if (!item) return false;
 
     if (item.priceCoins) {
       if (spendCoins(item.priceCoins)) {
         setShopItems(prev =>
           prev.map(i => {
-            if (i.id === itemId) {
+            if (i.id === item.id) {
               if (i.category === 'powerup') {
                 return { ...i, quantity: (i.quantity || 0) + 1 };
               }
@@ -654,10 +675,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return false;
     } else if (item.priceIdr) {
-      // Simulated Real IAP Purchase
+      // Real or Simulated IAP Purchase
       setShopItems(prev =>
         prev.map(i => {
-          if (i.id === itemId) {
+          if (i.id === item.id) {
             return { ...i, owned: true };
           }
           return i;
@@ -715,6 +736,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         themeMode,
         toggleThemeMode,
         setThemeMode,
+        defaultInputMode,
+        setDefaultInputMode,
         playerName,
         playerAvatar: activeProfile.avatar || '😎',
         setPlayerName,

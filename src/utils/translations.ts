@@ -241,7 +241,15 @@ export const translations = {
     powerupsSubheading: 'Gunakan di Mode Kilat & Bertahan',
     ownedLabel: 'Dimiliki:',
     originalPriceLabel: 'Harga Asli:',
-    balanceLabel: 'Saldo'
+    balanceLabel: 'Saldo',
+
+    // Pengaturan Metode Jawab
+    answerInputModeTitle: 'Metode Menjawab Soal:',
+    answerInputModeSubtitle: 'Pilih apakah ingin memilih 4 pilihan jawaban atau ketik sendiri lewat tombol angka numpad',
+    inputModeOptionsTitle: 'Pilihan Ganda (4 Opsi)',
+    inputModeOptionsSubtitle: 'Klik 1 dari 4 tombol pilihan jawaban cepat',
+    inputModeKeypadTitle: 'Ketik Sendiri (Numpad)',
+    inputModeKeypadSubtitle: 'Ketik angka jawaban sendiri lalu tekan ENTER'
   },
   en: {
     appTitle: 'Mental Math Master Pro',
@@ -483,7 +491,15 @@ export const translations = {
     powerupsSubheading: 'Use in Speed Blitz & Survival Modes',
     ownedLabel: 'Owned:',
     originalPriceLabel: 'Original:',
-    balanceLabel: 'Balance'
+    balanceLabel: 'Balance',
+
+    // Answer Input Mode Settings
+    answerInputModeTitle: 'Answer Input Mode:',
+    answerInputModeSubtitle: 'Choose between 4 multiple-choice options or typing the answer via numeric keypad',
+    inputModeOptionsTitle: 'Multiple Choice (4 Options)',
+    inputModeOptionsSubtitle: 'Tap 1 of 4 answer options to reply fast',
+    inputModeKeypadTitle: 'Type Yourself (Numpad)',
+    inputModeKeypadSubtitle: 'Type custom numbers and press ENTER'
   }
 };
 

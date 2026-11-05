@@ -51,7 +51,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     stats,
     isVip,
     language,
-    themeMode
+    themeMode,
+    defaultInputMode,
+    setDefaultInputMode
   } = useGame();
 
   const isLight = themeMode === 'light';
@@ -71,7 +73,12 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
   const [maxNumber, setMaxNumber] = useState<number | null>(null);
   const [isCustomMax, setIsCustomMax] = useState<boolean>(false);
   const [customMaxInput, setCustomMaxInput] = useState<string>('');
-  const [inputMode, setInputMode] = useState<'options' | 'keypad'>('options');
+  const [inputMode, setInputMode] = useState<'options' | 'keypad'>(defaultInputMode);
+
+  // Sync with defaultInputMode from context when context changes
+  useEffect(() => {
+    setInputMode(defaultInputMode);
+  }, [defaultInputMode]);
 
   // Mode 2: Sprint Waktu / Time Attack state
   const [sprintTarget, setSprintTarget] = useState<number>(10);
@@ -2213,6 +2220,79 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                   {maxNumber ? `${t.maxNumberNote}` : `${language === 'id' ? 'Pilih batas angka di atas atau masukkan angka bebas.' : 'Pick ceiling above or enter custom number.'}`}
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* Metode Menjawab Soal: Pilihan Ganda (Opsi) vs Ketik Sendiri (Numpad) */}
+          <div className={`pt-2 border-t ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
+            <div className="flex items-center justify-between mb-1.5">
+              <div>
+                <span className={`text-[11px] font-extrabold block leading-tight ${isLight ? 'text-slate-900' : 'text-slate-300'}`}>
+                  {language === 'id' ? 'Metode Menjawab Soal' : 'Answer Input Mode'}
+                </span>
+                <span className={`text-[9px] font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  {inputMode === 'options'
+                    ? (language === 'id' ? 'Pilihan: Klik 1 dari 4 pilihan jawaban' : 'Mode: Pick from 4 choices')
+                    : (language === 'id' ? 'Ketik Sendiri: Numpad angka mandiri' : 'Mode: Type via numpad')}
+                </span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                inputMode === 'options'
+                  ? isLight
+                    ? 'bg-amber-100 text-amber-950 border-amber-300'
+                    : isNeon
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                  : isLight
+                  ? 'bg-sky-100 text-sky-950 border-sky-300'
+                  : isNeon
+                  ? 'bg-emerald-500/30 text-emerald-200 border-emerald-400'
+                  : 'bg-sky-500/20 text-sky-300 border-sky-400/40'
+              }`}>
+                {inputMode === 'options' ? (language === 'id' ? '🔘 4 Pilihan' : '🔘 Options') : (language === 'id' ? '⌨️ Ketik Sendiri' : '⌨️ Numpad')}
+              </span>
+            </div>
+
+            <div className={`grid grid-cols-2 gap-1.5 p-1 rounded-xl border ${
+              isLight ? 'bg-slate-100 border-slate-200' : isNeon ? 'bg-[#021411] border-emerald-500/30' : 'bg-slate-950 border-slate-800/80'
+            }`}>
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playTap();
+                  setInputMode('options');
+                  setDefaultInputMode('options');
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  inputMode === 'options'
+                    ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black shadow-md scale-[1.02]'
+                    : isLight
+                    ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 font-semibold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>🔘</span>
+                <span>{language === 'id' ? 'Pilihan Ganda (4 Opsi)' : 'Multiple Choice (4)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playTap();
+                  setInputMode('keypad');
+                  setDefaultInputMode('keypad');
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  inputMode === 'keypad'
+                    ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black shadow-md scale-[1.02]'
+                    : isLight
+                    ? 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 font-semibold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>⌨️</span>
+                <span>{language === 'id' ? 'Ketik Sendiri (Numpad)' : 'Type Yourself (Numpad)'}</span>
+              </button>
             </div>
           </div>
         </div>

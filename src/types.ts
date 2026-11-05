@@ -4,6 +4,8 @@ export type Language = 'id' | 'en';
 
 export type ThemeMode = 'dark' | 'light' | 'neon';
 
+export type AnswerInputMode = 'options' | 'keypad';
+
 export type DifficultyLevel = 'sd_awal' | 'sd_lanjut' | 'smp' | 'sma_pro';
 
 export type MathOperation = '+' | '-' | '×' | '÷' | 'mixed' | 'powers';
