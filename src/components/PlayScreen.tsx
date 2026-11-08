@@ -89,12 +89,23 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
   const [isBlindfold, setIsBlindfold] = useState<boolean>(false);
   const [isPeeking, setIsPeeking] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [audioTarget, setAudioTarget] = useState<number>(20); // 20, 50, 100, 150, 200
 
   // Mode 4: Fokus Angka Tertentu state
+  const [isFocusRange, setIsFocusRange] = useState<boolean>(false);
   const [focusNumber, setFocusNumber] = useState<number>(7);
+  const [focusRangeMin, setFocusRangeMin] = useState<number>(1);
+  const [focusRangeMax, setFocusRangeMax] = useState<number>(10);
+  const [isCustomFocusRange, setIsCustomFocusRange] = useState<boolean>(false);
   const [focusTarget, setFocusTarget] = useState<number>(10);
   const [isCustomFocus, setIsCustomFocus] = useState<boolean>(false);
   const [customFocusInput, setCustomFocusInput] = useState<string>('');
+
+  // Wrong Answer Correction Notice for Audio, Survival, Daily, and Focus modes
+  const [wrongCorrectionNotice, setWrongCorrectionNotice] = useState<{
+    correctAnswer: number;
+    userAnswer: number | string;
+  } | null>(null);
 
   // Audio Mode Speech Feedback subtitle banner and persistent utterance ref
   const [audioFeedbackText, setAudioFeedbackText] = useState<string | null>(null);
@@ -343,7 +354,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     sprintTime?: number;
     stars?: number;
     isAudio?: boolean;
+    audioTarget?: number;
     focusNumber?: number;
+    focusRange?: { min: number; max: number };
     focusTarget?: number;
   } | null>(null);
 
@@ -375,6 +388,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     setGameOver(false);
     setGameSummary(null);
     setFeedback(null);
+    setWrongCorrectionNotice(null);
     setKeypadInput('');
     setHiddenOptions([]);
     setIsFrozen(false);
@@ -392,7 +406,8 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
       selectedOperations, 
       language, 
       maxNumber,
-      mode === 'focus' ? focusNumber : null
+      mode === 'focus' ? (isFocusRange ? null : focusNumber) : null,
+      mode === 'focus' && isFocusRange ? { min: focusRangeMin, max: focusRangeMax } : null
     );
     setCurrentQuestion(firstQ);
     questionStartTimeRef.current = Date.now();
@@ -493,7 +508,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
       sprintTime: finalSprintTime,
       stars: starsEarned,
       isAudio: gameMode === 'audio',
-      focusNumber: gameMode === 'focus' ? focusNumber : undefined,
+      audioTarget: gameMode === 'audio' ? audioTarget : undefined,
+      focusNumber: gameMode === 'focus' && !isFocusRange ? focusNumber : undefined,
+      focusRange: gameMode === 'focus' && isFocusRange ? { min: focusRangeMin, max: focusRangeMax } : undefined,
       focusTarget: gameMode === 'focus' ? focusTarget : undefined
     });
 
@@ -603,6 +620,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
 
       const advanceQuestion = () => {
         setFeedback(null);
+        setWrongCorrectionNotice(null);
         setKeypadInput('');
         setHiddenOptions([]);
         setIsPeeking(false);
@@ -613,7 +631,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           endGame();
         } else if (gameMode === 'sprint' && nextQIndex >= sprintTarget) {
           endGame();
-        } else if (gameMode === 'audio' && nextQIndex >= 10) {
+        } else if (gameMode === 'audio' && nextQIndex >= audioTarget) {
           endGame();
         } else if (gameMode === 'focus' && nextQIndex >= focusTarget) {
           endGame();
@@ -623,7 +641,8 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             selectedOperations, 
             language, 
             maxNumber,
-            gameMode === 'focus' ? focusNumber : null
+            gameMode === 'focus' ? (isFocusRange ? null : focusNumber) : null,
+            gameMode === 'focus' && isFocusRange ? { min: focusRangeMin, max: focusRangeMax } : null
           );
           setCurrentQuestion(nextQ);
           questionStartTimeRef.current = Date.now();
@@ -642,6 +661,14 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
       }
     } else {
       setFeedback('wrong');
+      const isShowCorrectMode = ['audio', 'survival', 'daily', 'focus'].includes(gameMode);
+      if (isShowCorrectMode) {
+        setWrongCorrectionNotice({
+          correctAnswer: currentQuestion.correctAnswer,
+          userAnswer: selectedAnswer
+        });
+      }
+
       const lostCombo = combo;
       setCombo(0);
       setStreakBanner(null);
@@ -683,14 +710,17 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
         const nextLives = lives - 1;
         setLives(nextLives);
         if (nextLives <= 0) {
+          // If lives reach 0, keep the correction notice visible so the user can see what the answer was
           setTimeout(() => {
+            setWrongCorrectionNotice(null);
             endGame();
-          }, 500);
+          }, 2200);
           return;
         }
       }
 
       const advanceQuestionWrong = () => {
+        setWrongCorrectionNotice(null);
         setFeedback(null);
         setKeypadInput('');
         setHiddenOptions([]);
@@ -700,7 +730,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
 
         if (gameMode === 'sprint' && nextQIndex >= sprintTarget) {
           endGame();
-        } else if (gameMode === 'audio' && nextQIndex >= 10) {
+        } else if (gameMode === 'audio' && nextQIndex >= audioTarget) {
           endGame();
         } else if (gameMode === 'focus' && nextQIndex >= focusTarget) {
           endGame();
@@ -710,7 +740,8 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             selectedOperations, 
             language, 
             maxNumber,
-            gameMode === 'focus' ? focusNumber : null
+            gameMode === 'focus' ? (isFocusRange ? null : focusNumber) : null,
+            gameMode === 'focus' && isFocusRange ? { min: focusRangeMin, max: focusRangeMax } : null
           );
           setCurrentQuestion(nextQ);
           questionStartTimeRef.current = Date.now();
@@ -724,6 +755,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
         speakFeedback(false, currentQuestion.correctAnswer, () => {
           advanceQuestionWrong();
         });
+      } else if (isShowCorrectMode) {
+        // Display for 1800ms so user can comfortably read the correct answer
+        setTimeout(advanceQuestionWrong, 1800);
       } else {
         setTimeout(advanceQuestionWrong, 600);
       }
@@ -763,7 +797,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
   };
 
   const activate5050 = () => {
-    if (!currentQuestion) return;
+    if (!currentQuestion || inputMode === 'keypad') return;
     if ((hintItem?.quantity || 0) > 0 && hiddenOptions.length === 0) {
       if (usePowerUp('hint_5050')) {
         const wrongOpts = currentQuestion.options.filter(o => o !== currentQuestion.correctAnswer);
@@ -882,7 +916,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                 {language === 'id' ? 'Audio' : 'Audio'}
               </span>
               <span className={`text-[10px] font-semibold border-l pl-1.5 ml-0.5 ${isLight ? 'text-violet-800 border-violet-200' : 'text-violet-400/80 border-slate-700'}`}>
-                {questionCount + 1}/10
+                {questionCount + 1}/{audioTarget}
               </span>
             </div>
           )}
@@ -898,7 +932,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             }`}>
               <Target className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`} />
               <span className="font-bold text-xs">
-                {t.focusActiveBadge}: {focusNumber}
+                {isFocusRange ? `${language === 'id' ? 'RENTANG' : 'RANGE'}: ${focusRangeMin}–${focusRangeMax}` : `${t.focusActiveBadge}: ${focusNumber}`}
               </span>
               <span className={`text-[10px] font-semibold border-l pl-1.5 ml-0.5 ${isLight ? 'text-emerald-800 border-emerald-200' : 'text-emerald-400/80 border-slate-700'}`}>
                 {questionCount + 1}/{focusTarget}
@@ -997,7 +1031,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           }`}>
             <div
               className="h-full bg-gradient-to-r from-violet-500 to-purple-400 transition-all duration-300"
-              style={{ width: `${Math.min(100, ((questionCount) / 10) * 100)}%` }}
+              style={{ width: `${Math.min(100, ((questionCount) / audioTarget) * 100)}%` }}
             />
           </div>
         )}
@@ -1217,7 +1251,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
               <div className={`text-[11px] sm:text-xs uppercase tracking-wider font-semibold truncate ${
                 isLight ? 'text-slate-600' : isNeon ? 'text-emerald-300/80' : 'text-slate-400'
               }`}>
-                {language === 'id' ? 'Soal' : 'Question'} #{questionCount + 1}{gameMode === 'sprint' ? ` / ${sprintTarget}` : gameMode === 'audio' ? ' / 10' : gameMode === 'focus' ? ` / ${focusTarget}` : ''} · {(level === 'sd_awal' ? t.diffSd13 : level === 'sd_lanjut' ? t.diffSd46 : level === 'smp' ? t.diffSmp : t.diffPro).toUpperCase()}{maxNumber ? ` · ≤${maxNumber}` : ''}
+                {language === 'id' ? 'Soal' : 'Question'} #{questionCount + 1}{gameMode === 'sprint' ? ` / ${sprintTarget}` : gameMode === 'audio' ? ` / ${audioTarget}` : gameMode === 'focus' ? ` / ${focusTarget}` : ''} · {(level === 'sd_awal' ? t.diffSd13 : level === 'sd_lanjut' ? t.diffSd46 : level === 'smp' ? t.diffSmp : t.diffPro).toUpperCase()}{maxNumber ? ` · ≤${maxNumber}` : ''}
               </div>
               <button
                 type="button"
@@ -1347,6 +1381,39 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
               </div>
             )}
 
+            {/* Wrong Answer Correct Answer Notice Banner (for Audio, Survival, Daily, Focus) */}
+            {wrongCorrectionNotice && (
+              <div className={`mt-3 w-full max-w-sm mx-auto p-2.5 sm:p-3 rounded-2xl border-2 flex items-center justify-between gap-3 shadow-lg animate-in fade-in zoom-in-95 duration-200 ${
+                isLight 
+                  ? 'bg-rose-50 border-rose-400 text-rose-950 shadow-rose-100' 
+                  : isNeon
+                  ? 'bg-[#1a0508] border-rose-500/80 text-rose-100 shadow-rose-950/50'
+                  : 'bg-rose-950/90 border-rose-500/80 text-rose-100 shadow-rose-950/50'
+              }`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 font-black shadow-xs text-sm">
+                    ✕
+                  </div>
+                  <div className="text-left min-w-0">
+                    <p className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                      {t.wrongCorrectionTitle}
+                    </p>
+                    <p className="text-xs sm:text-sm font-semibold truncate">
+                      {t.wrongCorrectionAnswer}{' '}
+                      <span className="font-extrabold font-mono-math text-base sm:text-lg text-rose-700 dark:text-rose-200 underline decoration-2">
+                        {wrongCorrectionNotice.correctAnswer}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                {wrongCorrectionNotice.userAnswer !== undefined && wrongCorrectionNotice.userAnswer !== '' && (
+                  <div className="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-300 font-mono-math text-[11px] font-bold shrink-0">
+                    {t.yourChoiceLabel} {wrongCorrectionNotice.userAnswer}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Hint or Trick prompt */}
             {getQuestionHint(currentQuestion, language) && (
               <p className={`text-[11px] mt-3 max-w-xs text-balance ${
@@ -1383,24 +1450,27 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             </button>
           )}
 
-          <button
-            onClick={activate5050}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl text-xs transition-colors cursor-pointer shadow-xs ${
-              isLight
-                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
-                : isNeon
-                ? 'bg-[#04241d] hover:bg-[#07362a] border-emerald-500/40 text-emerald-200'
-                : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white'
-            }`}
-            title="50:50"
-          >
-            <span>🪄 50:50</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono-math font-bold ${
-              isLight ? 'bg-amber-100 text-amber-900' : 'bg-slate-800 text-amber-400'
-            }`}>
-              {hintItem?.quantity || 0}
-            </span>
-          </button>
+          {/* 50:50 Power-up: ONLY when in Multiple Choice (Options) mode */}
+          {inputMode === 'options' && (
+            <button
+              onClick={activate5050}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl text-xs transition-colors cursor-pointer shadow-xs ${
+                isLight
+                  ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                  : isNeon
+                  ? 'bg-[#04241d] hover:bg-[#07362a] border-emerald-500/40 text-emerald-200'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white'
+              }`}
+              title="50:50"
+            >
+              <span>🪄 50:50</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono-math font-bold ${
+                isLight ? 'bg-amber-100 text-amber-900' : 'bg-slate-800 text-amber-400'
+              }`}>
+                {hintItem?.quantity || 0}
+              </span>
+            </button>
+          )}
 
           <button
             onClick={activateDoubleXp}
@@ -1419,24 +1489,6 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             }`}>
               {isDoubleXpActive ? 'AKTIF' : doubleXpItem?.quantity || 0}
             </span>
-          </button>
-
-          {/* Toggle Keypad vs Multiple Choice */}
-          <button
-            onClick={() => {
-              sounds.playTap();
-              setInputMode(prev => (prev === 'options' ? 'keypad' : 'options'));
-            }}
-            className={`px-2.5 py-1.5 border rounded-xl text-xs cursor-pointer shadow-xs font-semibold ${
-              isLight
-                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900'
-                : isNeon
-                ? 'bg-[#04241d] hover:bg-[#07362a] border-emerald-500/40 text-emerald-200'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-            title="Input Mode"
-          >
-            {inputMode === 'options' ? (language === 'id' ? '⌨️ Numpad' : '⌨️ Keypad') : (language === 'id' ? '🔘 Opsi' : '🔘 Options')}
           </button>
         </div>
 
@@ -1596,7 +1648,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           )}
 
           {/* Special Focus Result Banner */}
-          {gameSummary.focusNumber !== undefined && (
+          {(gameSummary.focusNumber !== undefined || gameSummary.focusRange !== undefined) && (
             <div className={`rounded-2xl p-3 flex items-center justify-between shadow-md border ${
               isLight
                 ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
@@ -1604,7 +1656,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             }`}>
               <div>
                 <span className={`text-[10px] uppercase font-bold tracking-wider block ${isLight ? 'text-emerald-800' : 'text-emerald-400'}`}>
-                  {language === 'id' ? `Hasil Fokus Angka ${gameSummary.focusNumber}` : `Focus Number ${gameSummary.focusNumber} Result`} · {gameSummary.focusTarget || 10} {language === 'id' ? 'Soal' : 'Questions'}
+                  {gameSummary.focusRange
+                    ? (language === 'id' ? `Hasil Fokus Rentang ${gameSummary.focusRange.min}–${gameSummary.focusRange.max}` : `Focus Range ${gameSummary.focusRange.min}–${gameSummary.focusRange.max} Result`)
+                    : (language === 'id' ? `Hasil Fokus Angka ${gameSummary.focusNumber}` : `Focus Number ${gameSummary.focusNumber} Result`)} · {gameSummary.focusTarget || 10} {language === 'id' ? 'Soal' : 'Questions'}
                 </span>
                 <div className="flex items-baseline gap-2 mt-0.5">
                   <span className={`text-xl font-black font-mono-math ${isLight ? 'text-emerald-950' : 'text-white'}`}>
@@ -1639,7 +1693,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             }`}>
               <div>
                 <span className={`text-[10px] uppercase font-bold tracking-wider block ${isLight ? 'text-violet-800' : 'text-violet-400'}`}>
-                  {language === 'id' ? 'Hasil Dikte Suara (Audio Mencongak)' : 'Audio Dictation Result'} · 10 {language === 'id' ? 'Soal' : 'Questions'}
+                  {language === 'id' ? 'Hasil Dikte Suara (Audio Mencongak)' : 'Audio Dictation Result'} · {gameSummary.audioTarget || 20} {language === 'id' ? 'Soal' : 'Questions'}
                 </span>
                 <div className="flex items-baseline gap-2 mt-0.5">
                   <span className={`text-xl font-black font-mono-math ${isLight ? 'text-violet-950' : 'text-white'}`}>
@@ -2456,35 +2510,63 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                   {t.modeAudioDesc}
                 </p>
 
-                {/* Audio Option & Start Button */}
-                <div className={`mt-2.5 pt-2 border-t flex items-center justify-between gap-2 flex-wrap ${
-                  isLight ? 'border-slate-200' : 'border-slate-800/80'
-                }`}>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      sounds.playTap();
-                      setIsBlindfold(prev => !prev);
-                    }}
-                    className={`px-2 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
-                      isBlindfold
-                        ? isLight ? 'bg-purple-100 border-purple-400 text-purple-900 font-black' : 'bg-purple-900/60 border-purple-400 text-purple-200'
-                        : isLight ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {isBlindfold ? <EyeOff className="w-3.5 h-3.5 text-purple-500" /> : <Eye className="w-3.5 h-3.5" />}
-                    <span>{isBlindfold ? (language === 'id' ? 'Mata Tertutup 🙈' : 'Blindfold 🙈') : (language === 'id' ? 'Teks + Suara 👁️' : 'Text + Audio 👁️')}</span>
-                  </button>
+                {/* Audio Target Questions Selector & Controls */}
+                <div className={`mt-2.5 pt-2 border-t space-y-2 ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                      {t.sprintTargetQuestions}:
+                    </span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {[20, 50, 100, 150, 200].map(cnt => (
+                        <button
+                          key={cnt}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sounds.playTap();
+                            setAudioTarget(cnt);
+                          }}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono-math font-bold transition-all cursor-pointer ${
+                            audioTarget === cnt
+                              ? 'bg-purple-600 text-white font-black shadow-xs scale-105'
+                              : isLight
+                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                              : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          {cnt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => startGame('audio')}
-                    className="px-3 py-1 rounded-xl bg-gradient-to-r from-violet-400 to-purple-500 text-slate-950 font-black text-xs shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1 ml-auto"
-                  >
-                    <span>{language === 'id' ? 'Mulai Dikte' : 'Start Audio'}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sounds.playTap();
+                        setIsBlindfold(prev => !prev);
+                      }}
+                      className={`px-2 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isBlindfold
+                          ? isLight ? 'bg-purple-100 border-purple-400 text-purple-900 font-black' : 'bg-purple-900/60 border-purple-400 text-purple-200'
+                          : isLight ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {isBlindfold ? <EyeOff className="w-3.5 h-3.5 text-purple-500" /> : <Eye className="w-3.5 h-3.5" />}
+                      <span>{isBlindfold ? (language === 'id' ? 'Mata Tertutup 🙈' : 'Blindfold 🙈') : (language === 'id' ? 'Teks + Suara 👁️' : 'Text + Audio 👁️')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => startGame('audio')}
+                      className="px-3 py-1 rounded-xl bg-gradient-to-r from-violet-400 to-purple-500 text-slate-950 font-black text-xs shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1 ml-auto"
+                    >
+                      <span>{language === 'id' ? `Mulai Dikte (${audioTarget} Soal)` : `Start Audio (${audioTarget} Qs)`}</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2522,82 +2604,231 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                 </p>
 
                 {/* Focus Controls */}
-                <div className={`mt-2.5 pt-2 border-t space-y-2 ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
-                  {/* Preset chips adapted to level & maxNumber */}
-                  <div className="flex items-center justify-between gap-1 flex-wrap">
-                    <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
-                      {t.focusNumberLabel}
-                    </span>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {focusPresets.map(num => (
-                        <button
-                          key={num}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectFocusNumber(num);
-                          }}
-                          className={`w-7 h-6 rounded-lg text-[10px] font-mono-math font-bold transition-all cursor-pointer flex items-center justify-center ${
-                            focusNumber === num && !isCustomFocus
-                              ? 'bg-emerald-500 text-white font-black shadow-xs scale-105'
-                              : isLight
-                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                              : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-                          }`}
-                        >
-                          {num}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          sounds.playTap();
-                          setIsCustomFocus(prev => !prev);
-                        }}
-                        className={`px-2 h-6 rounded-lg text-[9px] font-bold border transition-all cursor-pointer flex items-center justify-center ${
-                          isCustomFocus
-                            ? isLight ? 'bg-emerald-100 border-emerald-400 text-emerald-900 font-black' : 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
-                            : isLight ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {t.focusNumberCustom}
-                      </button>
-                    </div>
+                <div className={`mt-2.5 pt-2 border-t space-y-2.5 ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
+                  {/* Mode Switch: Angka Tunggal vs Rentang */}
+                  <div className="flex items-center gap-1 p-0.5 rounded-xl border bg-slate-100/80 dark:bg-slate-950/80 border-slate-200 dark:border-slate-800/80 w-fit">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sounds.playTap();
+                        setIsFocusRange(false);
+                        if (![10, 15, 20].includes(focusTarget)) {
+                          setFocusTarget(10);
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        !isFocusRange
+                          ? 'bg-emerald-500 text-white shadow-xs font-black'
+                          : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span>🎯 {t.focusSingleMode}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sounds.playTap();
+                        setIsFocusRange(true);
+                        if (![50, 100, 150, 200].includes(focusTarget)) {
+                          setFocusTarget(50);
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        isFocusRange
+                          ? 'bg-emerald-500 text-white shadow-xs font-black'
+                          : isLight
+                          ? 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span>📊 {t.focusRangeMode}</span>
+                    </button>
                   </div>
 
-                  {/* Custom Number Input if enabled */}
-                  {isCustomFocus && (
-                    <div className="flex items-center gap-2 pt-0.5 animate-in fade-in duration-150">
-                      <span className={`text-[10px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
-                        {language === 'id' ? 'Ketik Angka:' : 'Enter Number:'}
-                      </span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={Math.max(2, (maxNumber !== null ? maxNumber : activeLevelConfig.defaultMax) - 1)}
-                        value={customFocusInput || String(focusNumber)}
-                        onChange={(e) => handleCustomFocusChange(e.target.value)}
-                        placeholder="Contoh: 7"
-                        className={`w-20 rounded-lg px-2 py-0.5 text-xs font-mono-math font-bold focus:outline-none border ${
-                          isLight
-                            ? 'bg-white border-2 border-emerald-500 text-slate-900'
-                            : 'bg-slate-950 border border-emerald-500/60 text-emerald-300'
-                        }`}
-                      />
-                      <span className={`text-[9px] ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                        ({language === 'id' ? `Maksimal < ${maxNumber !== null ? maxNumber : activeLevelConfig.defaultMax}` : `Cap < ${maxNumber !== null ? maxNumber : activeLevelConfig.defaultMax}`})
-                      </span>
-                    </div>
+                  {!isFocusRange ? (
+                    <>
+                      {/* Single Focus Number Selector */}
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                        <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                          {t.focusNumberLabel}
+                        </span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {focusPresets.map(num => (
+                            <button
+                              key={num}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectFocusNumber(num);
+                              }}
+                              className={`w-7 h-6 rounded-lg text-[10px] font-mono-math font-bold transition-all cursor-pointer flex items-center justify-center ${
+                                focusNumber === num && !isCustomFocus
+                                  ? 'bg-emerald-500 text-white font-black shadow-xs scale-105'
+                                  : isLight
+                                  ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                              }`}
+                            >
+                              {num}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sounds.playTap();
+                              setIsCustomFocus(prev => !prev);
+                            }}
+                            className={`px-2 h-6 rounded-lg text-[9px] font-bold border transition-all cursor-pointer flex items-center justify-center ${
+                              isCustomFocus
+                                ? isLight ? 'bg-emerald-100 border-emerald-400 text-emerald-900 font-black' : 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                                : isLight ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            {t.focusNumberCustom}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Custom Number Input if enabled */}
+                      {isCustomFocus && (
+                        <div className="flex items-center gap-2 pt-0.5 animate-in fade-in duration-150">
+                          <span className={`text-[10px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                            {language === 'id' ? 'Ketik Angka:' : 'Enter Number:'}
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={Math.max(2, (maxNumber !== null ? maxNumber : activeLevelConfig.defaultMax) - 1)}
+                            value={customFocusInput || String(focusNumber)}
+                            onChange={(e) => handleCustomFocusChange(e.target.value)}
+                            placeholder="Contoh: 7"
+                            className={`w-20 rounded-lg px-2 py-0.5 text-xs font-mono-math font-bold focus:outline-none border ${
+                              isLight
+                                ? 'bg-white border-2 border-emerald-500 text-slate-900'
+                                : 'bg-slate-950 border border-emerald-500/60 text-emerald-300'
+                            }`}
+                          />
+                          <span className={`text-[9px] ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                            ({language === 'id' ? `Maksimal < ${maxNumber !== null ? maxNumber : activeLevelConfig.defaultMax}` : `Cap < ${maxNumber !== null ? maxNumber : activeLevelConfig.defaultMax}`})
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* Range Presets and Custom Range */}
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                        <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                          {t.focusRangeLabel}
+                        </span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {[
+                            { min: 1, max: 10, label: '1–10' },
+                            { min: 1, max: 20, label: '1–20' },
+                            { min: 11, max: 20, label: '11–20' },
+                            { min: 1, max: 50, label: '1–50' }
+                          ].map(preset => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                sounds.playTap();
+                                setFocusRangeMin(preset.min);
+                                setFocusRangeMax(preset.max);
+                                setIsCustomFocusRange(false);
+                              }}
+                              className={`px-2 h-6 rounded-lg text-[10px] font-mono-math font-bold transition-all cursor-pointer flex items-center justify-center ${
+                                focusRangeMin === preset.min && focusRangeMax === preset.max && !isCustomFocusRange
+                                  ? 'bg-emerald-500 text-white font-black shadow-xs scale-105'
+                                  : isLight
+                                  ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              sounds.playTap();
+                              setIsCustomFocusRange(prev => !prev);
+                            }}
+                            className={`px-2 h-6 rounded-lg text-[9px] font-bold border transition-all cursor-pointer flex items-center justify-center ${
+                              isCustomFocusRange
+                                ? isLight ? 'bg-emerald-100 border-emerald-400 text-emerald-900 font-black' : 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                                : isLight ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            {t.focusNumberCustom}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Custom Range Min & Max Inputs if enabled */}
+                      {isCustomFocusRange && (
+                        <div className="flex items-center gap-2 pt-0.5 animate-in fade-in duration-150 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <span className={`text-[10px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                              {t.focusRangeMinLabel}
+                            </span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={focusRangeMax}
+                              value={focusRangeMin}
+                              onChange={(e) => {
+                                const val = Math.max(1, parseInt(e.target.value, 10) || 1);
+                                setFocusRangeMin(val);
+                                if (val > focusRangeMax) setFocusRangeMax(val);
+                              }}
+                              className={`w-16 rounded-lg px-2 py-0.5 text-xs font-mono-math font-bold focus:outline-none border ${
+                                isLight
+                                  ? 'bg-white border-2 border-emerald-500 text-slate-900'
+                                  : 'bg-slate-950 border border-emerald-500/60 text-emerald-300'
+                              }`}
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className={`text-[10px] font-semibold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                              {t.focusRangeMaxLabel}
+                            </span>
+                            <input
+                              type="number"
+                              min={focusRangeMin}
+                              max={Math.max(2, (maxNumber !== null ? maxNumber : activeLevelConfig.defaultMax))}
+                              value={focusRangeMax}
+                              onChange={(e) => {
+                                const val = Math.max(focusRangeMin, parseInt(e.target.value, 10) || focusRangeMin);
+                                setFocusRangeMax(val);
+                              }}
+                              className={`w-16 rounded-lg px-2 py-0.5 text-xs font-mono-math font-bold focus:outline-none border ${
+                                isLight
+                                  ? 'bg-white border-2 border-emerald-500 text-slate-900'
+                                  : 'bg-slate-950 border border-emerald-500/60 text-emerald-300'
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Target Questions selector & Start Button */}
                   <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <span className={`text-[10px] font-bold mr-1 ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
                         {t.sprintTargetQuestions}:
                       </span>
-                      {[10, 15, 20].map(cnt => (
+                      {(isFocusRange ? [50, 100, 150, 200] : [10, 15, 20]).map(cnt => (
                         <button
                           key={cnt}
                           type="button"
@@ -2606,9 +2837,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                             sounds.playTap();
                             setFocusTarget(cnt);
                           }}
-                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono-math font-bold transition-all cursor-pointer ${
                             focusTarget === cnt
-                              ? 'bg-emerald-500 text-white font-black shadow-xs'
+                              ? 'bg-emerald-500 text-white font-black shadow-xs scale-105'
                               : isLight
                               ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                               : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
@@ -2624,7 +2855,11 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                       onClick={() => startGame('focus')}
                       className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-black text-xs shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1 ml-auto"
                     >
-                      <span>{language === 'id' ? `Fokus Angka ${focusNumber}` : `Focus ${focusNumber}`}</span>
+                      <span>
+                        {isFocusRange 
+                          ? (language === 'id' ? `Fokus Rentang ${focusRangeMin}–${focusRangeMax} (${focusTarget} Soal)` : `Focus Range ${focusRangeMin}–${focusRangeMax} (${focusTarget} Qs)`)
+                          : (language === 'id' ? `Fokus Angka ${focusNumber} (${focusTarget} Soal)` : `Focus ${focusNumber} (${focusTarget} Qs)`)}
+                      </span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>

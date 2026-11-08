@@ -202,13 +202,14 @@ export function generateQuestion(
   forcedOperation?: string | MathOperation | MathOperation[],
   lang: Language = 'id',
   maxNumber?: number | null,
-  focusNumber?: number | null
+  focusNumber?: number | null,
+  focusRange?: { min: number; max: number } | null
 ): Question {
   let attempts = 0;
   let chosenCandidate: Question | null = null;
 
   while (attempts < 15) {
-    const candidate = generateRawQuestion(level, forcedOperation, lang, maxNumber, focusNumber);
+    const candidate = generateRawQuestion(level, forcedOperation, lang, maxNumber, focusNumber, focusRange);
     const key = candidate.operation === 'powers' 
       ? `${candidate.num1}²` 
       : `${candidate.num1} ${candidate.operation} ${candidate.num2}`;
@@ -227,7 +228,7 @@ export function generateQuestion(
   }
 
   // Graceful fallback if pool is too tight (e.g. extreme low limits)
-  const fallback = chosenCandidate || generateRawQuestion(level, forcedOperation, lang, maxNumber, focusNumber);
+  const fallback = chosenCandidate || generateRawQuestion(level, forcedOperation, lang, maxNumber, focusNumber, focusRange);
   const fallbackKey = fallback.operation === 'powers' 
     ? `${fallback.num1}²` 
     : `${fallback.num1} ${fallback.operation} ${fallback.num2}`;
@@ -243,7 +244,8 @@ function generateRawQuestion(
   forcedOperation?: string | MathOperation | MathOperation[],
   lang: Language = 'id',
   maxNumber?: number | null,
-  focusNumber?: number | null
+  focusNumber?: number | null,
+  focusRange?: { min: number; max: number } | null
 ): Question {
   const isEn = lang === 'en';
 
@@ -297,9 +299,20 @@ function generateRawQuestion(
   // Maximum number that options can ever show (hard ceiling for options)
   const optionMaxLimit = level === 'sd_awal' ? Math.min(ceiling, 50) : ceiling;
 
-  // 1. IF FOCUS NUMBER IS SPECIFIED (Focus on learning a specific number like 7s, 9s, etc.)
-  if (typeof focusNumber === 'number' && focusNumber >= 1) {
-    const rawFocus = Math.floor(focusNumber);
+  // 1. IF FOCUS NUMBER OR RANGE IS SPECIFIED
+  let effectiveFocusNumber = focusNumber;
+  if (focusRange && typeof focusRange.min === 'number' && typeof focusRange.max === 'number') {
+    const rMin = Math.max(1, Math.floor(Math.min(focusRange.min, focusRange.max)));
+    const rMax = Math.max(rMin, Math.floor(Math.max(focusRange.min, focusRange.max)));
+    let picked = Math.floor(Math.random() * (rMax - rMin + 1)) + rMin;
+    if (picked === lastFocusFactor && rMax > rMin) {
+      picked = ((picked - rMin + 1) % (rMax - rMin + 1)) + rMin;
+    }
+    effectiveFocusNumber = picked;
+  }
+
+  if (typeof effectiveFocusNumber === 'number' && effectiveFocusNumber >= 1) {
+    const rawFocus = Math.floor(effectiveFocusNumber);
     // fn is the chosen focus number (e.g. 7)
     const fn = Math.max(1, rawFocus);
 
@@ -411,8 +424,8 @@ function generateRawQuestion(
         num2 = fn;
       }
       correctAnswer = num1 * num2;
-      hintId = `Tabel perkalian ${fn}: ${num1} dikali ${num2} = ${correctAnswer}`;
-      hintEn = `Multiplication table for ${fn}: ${num1} times ${num2} = ${correctAnswer}`;
+      hintId = `Ingat tabel perkalian ${fn}`;
+      hintEn = `Recall multiplication table for ${fn}`;
     } else if (op === '÷') {
       let minFactor = 1;
       let maxFactor = 10;
@@ -444,14 +457,14 @@ function generateRawQuestion(
         num2 = factor;
         correctAnswer = fn;
       }
-      hintId = `Berapa ${num1} dibagi ${num2}? Karena ${num2} × ${correctAnswer} = ${num1}`;
-      hintEn = `What is ${num1} divided by ${num2}? Because ${num2} × ${correctAnswer} = ${num1}`;
+      hintId = `${num2} dikali berapa agar menghasilkan ${num1}?`;
+      hintEn = `What number multiplied by ${num2} gives ${num1}?`;
     } else {
       num1 = fn;
       num2 = 2;
       correctAnswer = fn * fn;
-      hintId = `Kuadrat ${fn}² = ${fn} × ${fn} = ${correctAnswer}`;
-      hintEn = `Square of ${fn}² = ${fn} × ${fn} = ${correctAnswer}`;
+      hintId = `Kalikan ${fn} dengan dirinya sendiri (${fn} × ${fn})`;
+      hintEn = `Multiply ${fn} by itself (${fn} × ${fn})`;
     }
 
     const questionText = op === 'powers' ? `${num1}² = ?` : `${num1} ${op} ${num2} = ?`;
