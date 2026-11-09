@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Achievement, Language, LeaderboardEntry, PlayerProfile, ShopItem, UserStats, ThemeMode, AnswerInputMode } from '../types';
+import { Achievement, Language, LeaderboardEntry, PlayerProfile, ShopItem, UserStats, ThemeMode, AnswerInputMode, QuestionHistoryItem, DifficultyLevel, MathOperation } from '../types';
 import { sounds } from '../utils/audio';
 
 interface GameContextType {
@@ -42,6 +42,21 @@ interface GameContextType {
   switchProfile: (nameOrId: string) => void;
   createProfile: (name: string) => void;
   deleteProfile: (profileId: string) => void;
+  // Per-profile question history
+  questionHistory: QuestionHistoryItem[];
+  recordQuestionAttempt: (item: Omit<QuestionHistoryItem, 'id' | 'timestamp'>) => void;
+  clearQuestionHistory: (profileId?: string) => void;
+  // Shared filters from menu Main
+  mainDifficulty: DifficultyLevel;
+  setMainDifficulty: (level: DifficultyLevel) => void;
+  mainOperations: MathOperation[];
+  setMainOperations: React.Dispatch<React.SetStateAction<MathOperation[]>>;
+  mainMaxNumber: number | null;
+  setMainMaxNumber: (max: number | null) => void;
+  mainIsCustomMax: boolean;
+  setMainIsCustomMax: (val: boolean) => void;
+  mainCustomMaxInput: string;
+  setMainCustomMaxInput: (val: string) => void;
 }
 
 const INITIAL_ACHIEVEMENTS: Achievement[] = [
@@ -217,6 +232,100 @@ const DEFAULT_LEADERBOARD: LeaderboardEntry[] = [
   { id: 'lb_8', name: 'Kevin Solver', avatar: '🐼', score: 540, rank: 8, level: 12, streak: 11, country: 'Denpasar', category: 'sd_lanjut' }
 ];
 
+const DEFAULT_SAMPLE_HISTORY_LUFFY: QuestionHistoryItem[] = [
+  {
+    id: 'qh_l1',
+    questionText: '7 × 8',
+    userAnswer: 56,
+    correctAnswer: 56,
+    isCorrect: true,
+    timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+    mode: 'blitz',
+    level: 'sd_lanjut',
+    responseTimeSec: 1.6
+  },
+  {
+    id: 'qh_l2',
+    questionText: '45 + 29',
+    userAnswer: 74,
+    correctAnswer: 74,
+    isCorrect: true,
+    timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+    mode: 'survival',
+    level: 'sd_lanjut',
+    responseTimeSec: 2.1
+  },
+  {
+    id: 'qh_l3',
+    questionText: '84 ÷ 7',
+    userAnswer: 11,
+    correctAnswer: 12,
+    isCorrect: false,
+    timestamp: new Date(Date.now() - 1000 * 60 * 40).toISOString(),
+    mode: 'focus',
+    level: 'sd_lanjut',
+    responseTimeSec: 3.4
+  },
+  {
+    id: 'qh_l4',
+    questionText: '9 × 6',
+    userAnswer: 54,
+    correctAnswer: 54,
+    isCorrect: true,
+    timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    mode: 'audio',
+    level: 'sd_lanjut',
+    responseTimeSec: 1.9
+  },
+  {
+    id: 'qh_l5',
+    questionText: '63 - 28',
+    userAnswer: 36,
+    correctAnswer: 35,
+    isCorrect: false,
+    timestamp: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+    mode: 'daily',
+    level: 'sd_lanjut',
+    responseTimeSec: 2.8
+  }
+];
+
+const DEFAULT_SAMPLE_HISTORY_NAOKI: QuestionHistoryItem[] = [
+  {
+    id: 'qh_n1',
+    questionText: '4 + 5',
+    userAnswer: 9,
+    correctAnswer: 9,
+    isCorrect: true,
+    timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+    mode: 'focus',
+    level: 'sd_awal',
+    responseTimeSec: 1.4
+  },
+  {
+    id: 'qh_n2',
+    questionText: '3 × 4',
+    userAnswer: 12,
+    correctAnswer: 12,
+    isCorrect: true,
+    timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+    mode: 'audio',
+    level: 'sd_awal',
+    responseTimeSec: 2.0
+  },
+  {
+    id: 'qh_n3',
+    questionText: '10 - 4',
+    userAnswer: 7,
+    correctAnswer: 6,
+    isCorrect: false,
+    timestamp: new Date(Date.now() - 1000 * 60 * 50).toISOString(),
+    mode: 'survival',
+    level: 'sd_awal',
+    responseTimeSec: 2.5
+  }
+];
+
 const DEFAULT_PROFILES: PlayerProfile[] = [
   {
     id: 'prof_1',
@@ -237,7 +346,8 @@ const DEFAULT_PROFILES: PlayerProfile[] = [
     },
     achievements: INITIAL_ACHIEVEMENTS.map(a => a.id === 'first_blood' || a.id === 'streak_10' ? { ...a, unlocked: true, progress: a.maxProgress } : a),
     unlockedTricks: ['trick_11', 'trick_ends5', 'trick_comp100'],
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    questionHistory: DEFAULT_SAMPLE_HISTORY_LUFFY
   },
   {
     id: 'prof_2',
@@ -258,7 +368,8 @@ const DEFAULT_PROFILES: PlayerProfile[] = [
     },
     achievements: INITIAL_ACHIEVEMENTS.map(a => a.id === 'first_blood' ? { ...a, unlocked: true, progress: 1 } : a),
     unlockedTricks: ['trick_11'],
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    questionHistory: DEFAULT_SAMPLE_HISTORY_NAOKI
   }
 ];
 
@@ -274,13 +385,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (Array.isArray(parsed) && parsed.length > 0) {
           // If the profile is the old default 'Kakak Dimas' or 'Adik Aisyah', automatically update
           return parsed.map(p => {
+            let updated = { ...p };
             if (p.id === 'prof_1' && (p.name === 'Kakak Dimas' || !p.name)) {
-              return { ...p, name: 'Kakak Luffy' };
+              updated.name = 'Kakak Luffy';
             }
             if (p.name === 'Adik Aisyah' || (p.id === 'prof_2' && (p.name === 'Adik Aisyah' || !p.name))) {
-              return { ...p, name: 'Adik Naoki', avatar: p.avatar === '🌸' ? '👦' : p.avatar };
+              updated.name = 'Adik Naoki';
+              updated.avatar = p.avatar === '🌸' ? '👦' : p.avatar;
             }
-            return p;
+            if (!Array.isArray(updated.questionHistory)) {
+              updated.questionHistory = updated.id === 'prof_1' ? DEFAULT_SAMPLE_HISTORY_LUFFY : updated.id === 'prof_2' ? DEFAULT_SAMPLE_HISTORY_NAOKI : [];
+            }
+            return updated;
           });
         }
       } catch {}
@@ -308,6 +424,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [stats, setStats] = useState<UserStats>(activeProfile.stats);
   const [achievements, setAchievements] = useState<Achievement[]>(activeProfile.achievements);
   const [unlockedTricks, setUnlockedTricks] = useState<string[]>(activeProfile.unlockedTricks);
+  const [questionHistory, setQuestionHistory] = useState<QuestionHistoryItem[]>(() => activeProfile.questionHistory || []);
 
   // Global device items (Shared VIP, sound, and language settings)
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
@@ -356,6 +473,53 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLanguageState(lang);
     localStorage.setItem('mm_lang', lang);
   };
+
+  // Shared Filters initialized from localStorage or defaults
+  const [mainDifficulty, setMainDifficultyState] = useState<DifficultyLevel>(() => {
+    const saved = localStorage.getItem('mm_filter_level') as DifficultyLevel;
+    return saved === 'sd_awal' || saved === 'sd_lanjut' || saved === 'smp' || saved === 'sma_pro' ? saved : 'sd_awal';
+  });
+
+  const setMainDifficulty = (lvl: DifficultyLevel) => {
+    setMainDifficultyState(lvl);
+    localStorage.setItem('mm_filter_level', lvl);
+  };
+
+  const [mainOperations, setMainOperations] = useState<MathOperation[]>(() => {
+    const saved = localStorage.getItem('mm_filter_ops');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return ['+', '-', '×', '÷'];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mm_filter_ops', JSON.stringify(mainOperations));
+  }, [mainOperations]);
+
+  const [mainMaxNumber, setMainMaxNumberState] = useState<number | null>(() => {
+    const saved = localStorage.getItem('mm_filter_max');
+    if (saved !== null && saved !== '') {
+      const num = parseInt(saved, 10);
+      return !isNaN(num) ? num : null;
+    }
+    return null;
+  });
+
+  const setMainMaxNumber = (num: number | null) => {
+    setMainMaxNumberState(num);
+    if (num !== null) {
+      localStorage.setItem('mm_filter_max', String(num));
+    } else {
+      localStorage.removeItem('mm_filter_max');
+    }
+  };
+
+  const [mainIsCustomMax, setMainIsCustomMax] = useState<boolean>(false);
+  const [mainCustomMaxInput, setMainCustomMaxInput] = useState<string>('');
 
   const [shopItems, setShopItems] = useState<ShopItem[]>(() => {
     const saved = localStorage.getItem('mm_shop');
@@ -410,9 +574,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Save current player progress to the profile in the profiles list
   useEffect(() => {
-    setProfiles(prev =>
-      prev.map(p => {
+    setProfiles(prev => {
+      let hasChanged = false;
+      const nextProfiles = prev.map(p => {
         if (p.id === activeProfileId) {
+          if (
+            p.name === playerName &&
+            p.xp === xp &&
+            p.coins === coins &&
+            p.stats === stats &&
+            p.achievements === achievements &&
+            p.unlockedTricks === unlockedTricks &&
+            p.questionHistory === questionHistory
+          ) {
+            return p;
+          }
+          hasChanged = true;
           return {
             ...p,
             name: playerName,
@@ -420,13 +597,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             coins,
             stats,
             achievements,
-            unlockedTricks
+            unlockedTricks,
+            questionHistory
           };
         }
         return p;
-      })
-    );
-  }, [playerName, xp, coins, stats, achievements, unlockedTricks, activeProfileId]);
+      });
+      return hasChanged ? nextProfiles : prev;
+    });
+  }, [playerName, xp, coins, stats, achievements, unlockedTricks, questionHistory, activeProfileId]);
 
   // Persist profiles to localStorage
   useEffect(() => {
@@ -461,6 +640,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setStats(target.stats);
       setAchievements(target.achievements);
       setUnlockedTricks(target.unlockedTricks);
+      setQuestionHistory(target.questionHistory || []);
     } else {
       // Create new profile with this name if not found
       createProfile(nameOrId);
@@ -492,7 +672,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
       achievements: INITIAL_ACHIEVEMENTS,
       unlockedTricks: ['trick_11'],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      questionHistory: []
     };
 
     setProfiles(prev => [...prev, newProfile]);
@@ -503,6 +684,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStats(newProfile.stats);
     setAchievements(newProfile.achievements);
     setUnlockedTricks(newProfile.unlockedTricks);
+    setQuestionHistory([]);
   };
 
   // Function to delete a profile
@@ -715,6 +897,26 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSoundEnabled(prev => !prev);
   };
 
+  const recordQuestionAttempt = (item: Omit<QuestionHistoryItem, 'id' | 'timestamp'>) => {
+    const newItem: QuestionHistoryItem = {
+      ...item,
+      id: 'qh_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      timestamp: new Date().toISOString()
+    };
+    setQuestionHistory(prev => [newItem, ...prev].slice(0, 300));
+  };
+
+  const clearQuestionHistory = (profileId?: string) => {
+    const targetId = profileId || activeProfileId;
+    sounds.playTap();
+    if (targetId === activeProfileId) {
+      setQuestionHistory([]);
+    }
+    setProfiles(prev =>
+      prev.map(p => (p.id === targetId ? { ...p, questionHistory: [] } : p))
+    );
+  };
+
   const resetAllProgress = () => {
     localStorage.clear();
     setProfiles(DEFAULT_PROFILES);
@@ -725,6 +927,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStats(DEFAULT_PROFILES[0].stats);
     setAchievements(DEFAULT_PROFILES[0].achievements);
     setUnlockedTricks(DEFAULT_PROFILES[0].unlockedTricks);
+    setQuestionHistory(DEFAULT_PROFILES[0].questionHistory || []);
     setShopItems(INITIAL_SHOP_ITEMS);
     setLeaderboard(DEFAULT_LEADERBOARD);
     sounds.playTap();
@@ -770,7 +973,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activeProfileId,
         switchProfile,
         createProfile,
-        deleteProfile
+        deleteProfile,
+        questionHistory,
+        recordQuestionAttempt,
+        clearQuestionHistory,
+        mainDifficulty,
+        setMainDifficulty,
+        mainOperations,
+        setMainOperations,
+        mainMaxNumber,
+        setMainMaxNumber,
+        mainIsCustomMax,
+        setMainIsCustomMax,
+        mainCustomMaxInput,
+        setMainCustomMaxInput
       }}
     >
       {children}

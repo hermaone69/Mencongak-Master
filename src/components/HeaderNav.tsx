@@ -5,7 +5,7 @@ import { sounds } from '../utils/audio';
 import { getTranslation } from '../utils/translations';
 
 interface HeaderNavProps {
-  onOpenProfile: () => void;
+  onOpenProfile: (tab?: 'profile' | 'history' | 'gas') => void;
   onOpenShop: () => void;
 }
 

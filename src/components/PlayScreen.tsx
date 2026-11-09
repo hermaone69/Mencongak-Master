@@ -29,7 +29,7 @@ interface PlayScreenProps {
   onOpenTricks: () => void;
   onOpenLeaderboard: () => void;
   onOpenShop: () => void;
-  onOpenProfile?: () => void;
+  onOpenProfile?: (initialTab?: 'profile' | 'history' | 'gas') => void;
   onOpenCertificate?: () => void;
 }
 
@@ -53,7 +53,19 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     language,
     themeMode,
     defaultInputMode,
-    setDefaultInputMode
+    setDefaultInputMode,
+    questionHistory,
+    recordQuestionAttempt,
+    mainDifficulty: level,
+    setMainDifficulty: setLevel,
+    mainOperations: selectedOperations,
+    setMainOperations: setSelectedOperations,
+    mainMaxNumber: maxNumber,
+    setMainMaxNumber: setMaxNumber,
+    mainIsCustomMax: isCustomMax,
+    setMainIsCustomMax: setIsCustomMax,
+    mainCustomMaxInput: customMaxInput,
+    setMainCustomMaxInput: setCustomMaxInput
   } = useGame();
 
   const isLight = themeMode === 'light';
@@ -68,11 +80,6 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
   // Selection state
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [gameMode, setGameMode] = useState<GameMode>('blitz');
-  const [level, setLevel] = useState<DifficultyLevel>('sd_awal');
-  const [selectedOperations, setSelectedOperations] = useState<MathOperation[]>(['+', '-', '×', '÷']);
-  const [maxNumber, setMaxNumber] = useState<number | null>(null);
-  const [isCustomMax, setIsCustomMax] = useState<boolean>(false);
-  const [customMaxInput, setCustomMaxInput] = useState<string>('');
   const [inputMode, setInputMode] = useState<'options' | 'keypad'>(defaultInputMode);
 
   // Sync with defaultInputMode from context when context changes
@@ -101,15 +108,38 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
   const [isCustomFocus, setIsCustomFocus] = useState<boolean>(false);
   const [customFocusInput, setCustomFocusInput] = useState<string>('');
 
-  // Wrong Answer Correction Notice for Audio, Survival, Daily, and Focus modes
+  // Wrong Answer Correction Notice for all modes
   const [wrongCorrectionNotice, setWrongCorrectionNotice] = useState<{
     correctAnswer: number;
     userAnswer: number | string;
   } | null>(null);
 
+  // Correct Answer Notification Notice
+  const [correctNotice, setCorrectNotice] = useState<{
+    correctAnswer: number;
+    pointsEarned: number;
+  } | null>(null);
+
   // Audio Mode Speech Feedback subtitle banner and persistent utterance ref
   const [audioFeedbackText, setAudioFeedbackText] = useState<string | null>(null);
   const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Timer options (0 = Nonaktif, 10, 20, 30 seconds per question) for Audio, Survival, Daily, Focus modes
+  const [audioTimer, setAudioTimer] = useState<number>(0);
+  const [survivalTimer, setSurvivalTimer] = useState<number>(0);
+  const [dailyTimer, setDailyTimer] = useState<number>(0);
+  const [focusTimer, setFocusTimer] = useState<number>(0);
+
+  // Active question timer countdown
+  const [qTimeLeft, setQTimeLeft] = useState<number | null>(null);
+
+  const getActiveModeTimer = (mode: GameMode) => {
+    if (mode === 'audio') return audioTimer;
+    if (mode === 'survival') return survivalTimer;
+    if (mode === 'daily') return dailyTimer;
+    if (mode === 'focus') return focusTimer;
+    return 0;
+  };
 
   // Remedial flag
   const [isRemedialSession, setIsRemedialSession] = useState<boolean>(false);
@@ -389,6 +419,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     setGameSummary(null);
     setFeedback(null);
     setWrongCorrectionNotice(null);
+    setCorrectNotice(null);
     setKeypadInput('');
     setHiddenOptions([]);
     setIsFrozen(false);
@@ -411,6 +442,10 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     );
     setCurrentQuestion(firstQ);
     questionStartTimeRef.current = Date.now();
+
+    const initTimer = getActiveModeTimer(mode);
+    setQTimeLeft(initTimer > 0 ? initTimer : null);
+
     setIsPlaying(true);
 
     if (mode === 'audio') {
@@ -423,12 +458,11 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
   // Timer loop (supports countdown for blitz/daily and stopwatch for sprint)
   useEffect(() => {
     if (isPlaying && !gameOver) {
-      if (gameMode === 'blitz' || gameMode === 'daily') {
+      if (gameMode === 'blitz' || (gameMode === 'daily' && dailyTimer === 0)) {
         timerRef.current = setInterval(() => {
           if (!isFrozen) {
             setTimeLeft(prev => {
               if (prev <= 1) {
-                endGame();
                 return 0;
               }
               if (prev <= 6) {
@@ -448,7 +482,14 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, gameOver, isFrozen, gameMode]);
+  }, [isPlaying, gameOver, isFrozen, gameMode, dailyTimer]);
+
+  // Handle game time expired
+  useEffect(() => {
+    if (isPlaying && (gameMode === 'blitz' || (gameMode === 'daily' && dailyTimer === 0)) && timeLeft === 0 && !gameOver) {
+      endGame();
+    }
+  }, [timeLeft, isPlaying, gameMode, dailyTimer, gameOver]);
 
   // End Game
   const endGame = () => {
@@ -517,9 +558,147 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
     submitScore(finalScore, level);
   };
 
+  // Per-Question Timer countdown loop
+  useEffect(() => {
+    if (!isPlaying || gameOver || feedback || wrongCorrectionNotice || isFrozen) return;
+
+    const activeTimerLimit = getActiveModeTimer(gameMode);
+    if (activeTimerLimit <= 0 || qTimeLeft === null) return;
+
+    const interval = setInterval(() => {
+      setQTimeLeft(prev => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          return 0;
+        }
+        if (prev <= 4) {
+          sounds.playTick(true);
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, gameOver, feedback, wrongCorrectionNotice, isFrozen, gameMode, qTimeLeft]);
+
+  // Handle per-question timer expiration
+  useEffect(() => {
+    if (isPlaying && !gameOver && !feedback && !wrongCorrectionNotice && qTimeLeft === 0) {
+      handleQuestionTimeout();
+    }
+  }, [qTimeLeft, isPlaying, gameOver, feedback, wrongCorrectionNotice]);
+
+  // Handle Question Timeout
+  const handleQuestionTimeout = () => {
+    if (!currentQuestion || gameOver || feedback) return;
+
+    setQTimeLeft(null);
+    setFeedback('wrong');
+
+    const timeoutText = language === 'id' ? 'Waktu Habis! ⏰' : 'Time\'s Up! ⏰';
+
+    setWrongCorrectionNotice({
+      correctAnswer: currentQuestion.correctAnswer,
+      userAnswer: timeoutText
+    });
+
+    const lostCombo = combo;
+    setCombo(0);
+    setStreakBanner(null);
+    setScorePopup(null);
+
+    if (lostCombo >= 2) {
+      sounds.playStreakBroken(lostCombo);
+      setIsStreakShaking(true);
+      setTimeout(() => setIsStreakShaking(false), 450);
+
+      setStreakBrokenNotice({
+        lostCombo,
+        title: language === 'id' ? '💔 STREAK TERPUTUS!' : '💔 STREAK BROKEN!',
+        subtitle: language === 'id'
+          ? `Kombo ${lostCombo}x padam! Waktu habis untuk soal ini! ⏱️`
+          : `${lostCombo}x combo lost! Time expired for this question! ⏱️`,
+        wasFever: lostCombo >= 10
+      });
+      setTimeout(() => setStreakBrokenNotice(null), 2800);
+    } else {
+      sounds.playWrong();
+    }
+
+    recordAnswer(false, gameMode, 0);
+    recordQuestionAttempt({
+      questionText: currentQuestion.questionText.replace(' = ?', ''),
+      userAnswer: timeoutText,
+      correctAnswer: currentQuestion.correctAnswer,
+      isCorrect: false,
+      mode: gameMode,
+      level,
+      responseTimeSec: 0
+    });
+
+    if (gameMode === 'survival') {
+      const nextLives = lives - 1;
+      setLives(nextLives);
+      if (nextLives <= 0) {
+        setTimeout(() => {
+          setWrongCorrectionNotice(null);
+          endGame();
+        }, 2200);
+        return;
+      }
+    }
+
+    const advanceQuestionWrongTimeout = () => {
+      setWrongCorrectionNotice(null);
+      setFeedback(null);
+      setKeypadInput('');
+      setHiddenOptions([]);
+      setIsPeeking(false);
+      const nextQIndex = questionCount + 1;
+      setQuestionCount(nextQIndex);
+
+      if (gameMode === 'sprint' && nextQIndex >= sprintTarget) {
+        endGame();
+      } else if (gameMode === 'audio' && nextQIndex >= audioTarget) {
+        endGame();
+      } else if (gameMode === 'focus' && nextQIndex >= focusTarget) {
+        endGame();
+      } else if (gameMode === 'daily' && nextQIndex >= 5) {
+        endGame();
+      } else {
+        const nextQ = generateQuestion(
+          level, 
+          selectedOperations, 
+          language, 
+          maxNumber,
+          gameMode === 'focus' ? (isFocusRange ? null : focusNumber) : null,
+          gameMode === 'focus' && isFocusRange ? { min: focusRangeMin, max: focusRangeMax } : null
+        );
+        setCurrentQuestion(nextQ);
+        questionStartTimeRef.current = Date.now();
+        const nextT = getActiveModeTimer(gameMode);
+        setQTimeLeft(nextT > 0 ? nextT : null);
+
+        if (gameMode === 'audio') {
+          setTimeout(() => speakQuestion(nextQ), 600);
+        }
+      }
+    };
+
+    if (gameMode === 'audio') {
+      speakFeedback(false, currentQuestion.correctAnswer, () => {
+        advanceQuestionWrongTimeout();
+      });
+    } else {
+      setTimeout(advanceQuestionWrongTimeout, 2000);
+    }
+  };
+
   // Handle Answer
   const handleAnswer = (selectedAnswer: number) => {
     if (!currentQuestion || gameOver || feedback) return;
+
+    setQTimeLeft(null); // freeze question timer immediately
 
     const responseTime = Date.now() - questionStartTimeRef.current;
     totalResponseTimeRef.current += responseTime;
@@ -561,6 +740,21 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
 
       setScore(prev => prev + totalPoints);
       recordAnswer(true, gameMode, totalPoints);
+      recordQuestionAttempt({
+        questionText: currentQuestion.questionText.replace(' = ?', ''),
+        userAnswer: selectedAnswer,
+        correctAnswer: currentQuestion.correctAnswer,
+        isCorrect: true,
+        mode: gameMode,
+        level,
+        responseTimeSec: Math.round((responseTime / 1000) * 10) / 10
+      });
+
+      // Set attractive correct answer banner notice
+      setCorrectNotice({
+        correctAnswer: currentQuestion.correctAnswer,
+        pointsEarned: totalPoints
+      });
 
       // Floating Score Toast
       setScorePopup({
@@ -620,6 +814,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
 
       const advanceQuestion = () => {
         setFeedback(null);
+        setCorrectNotice(null);
         setWrongCorrectionNotice(null);
         setKeypadInput('');
         setHiddenOptions([]);
@@ -646,6 +841,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           );
           setCurrentQuestion(nextQ);
           questionStartTimeRef.current = Date.now();
+          const nextT = getActiveModeTimer(gameMode);
+          setQTimeLeft(nextT > 0 ? nextT : null);
+
           if (gameMode === 'audio') {
             setTimeout(() => speakQuestion(nextQ), 600);
           }
@@ -657,17 +855,16 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           advanceQuestion();
         });
       } else {
-        setTimeout(advanceQuestion, 350);
+        // Generous 2000ms (2 seconds) pause so user can see correct feedback clearly
+        setTimeout(advanceQuestion, 2000);
       }
     } else {
       setFeedback('wrong');
-      const isShowCorrectMode = ['audio', 'survival', 'daily', 'focus'].includes(gameMode);
-      if (isShowCorrectMode) {
-        setWrongCorrectionNotice({
-          correctAnswer: currentQuestion.correctAnswer,
-          userAnswer: selectedAnswer
-        });
-      }
+      // Always set wrongCorrectionNotice for ALL modes so user knows what the correct answer was
+      setWrongCorrectionNotice({
+        correctAnswer: currentQuestion.correctAnswer,
+        userAnswer: selectedAnswer
+      });
 
       const lostCombo = combo;
       setCombo(0);
@@ -705,12 +902,21 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
       }
 
       recordAnswer(false, gameMode, 0);
+      recordQuestionAttempt({
+        questionText: currentQuestion.questionText.replace(' = ?', ''),
+        userAnswer: selectedAnswer,
+        correctAnswer: currentQuestion.correctAnswer,
+        isCorrect: false,
+        mode: gameMode,
+        level,
+        responseTimeSec: Math.round((responseTime / 1000) * 10) / 10
+      });
 
       if (gameMode === 'survival') {
         const nextLives = lives - 1;
         setLives(nextLives);
         if (nextLives <= 0) {
-          // If lives reach 0, keep the correction notice visible so the user can see what the answer was
+          // If lives reach 0, keep the correction notice visible for 2.2 seconds before showing session summary
           setTimeout(() => {
             setWrongCorrectionNotice(null);
             endGame();
@@ -721,6 +927,7 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
 
       const advanceQuestionWrong = () => {
         setWrongCorrectionNotice(null);
+        setCorrectNotice(null);
         setFeedback(null);
         setKeypadInput('');
         setHiddenOptions([]);
@@ -734,6 +941,8 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           endGame();
         } else if (gameMode === 'focus' && nextQIndex >= focusTarget) {
           endGame();
+        } else if (gameMode === 'daily' && nextQIndex >= 5) {
+          endGame();
         } else {
           const nextQ = generateQuestion(
             level, 
@@ -745,6 +954,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           );
           setCurrentQuestion(nextQ);
           questionStartTimeRef.current = Date.now();
+          const nextT = getActiveModeTimer(gameMode);
+          setQTimeLeft(nextT > 0 ? nextT : null);
+
           if (gameMode === 'audio') {
             setTimeout(() => speakQuestion(nextQ), 600);
           }
@@ -755,11 +967,9 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
         speakFeedback(false, currentQuestion.correctAnswer, () => {
           advanceQuestionWrong();
         });
-      } else if (isShowCorrectMode) {
-        // Display for 1800ms so user can comfortably read the correct answer
-        setTimeout(advanceQuestionWrong, 1800);
       } else {
-        setTimeout(advanceQuestionWrong, 600);
+        // Generous 2000ms (2 seconds) pause so user can comfortably read the correct answer
+        setTimeout(advanceQuestionWrong, 2000);
       }
     }
   };
@@ -972,6 +1182,22 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             </div>
           )}
 
+          {/* Per-Question Timer Badge */}
+          {qTimeLeft !== null && (
+            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border shadow-xs transition-all font-mono-math font-extrabold text-xs ${
+              qTimeLeft <= 3
+                ? 'bg-rose-500 text-white border-rose-400 animate-bounce shadow-md'
+                : qTimeLeft <= 5
+                ? 'bg-amber-400 text-slate-950 border-amber-300 animate-pulse'
+                : isLight
+                ? 'bg-amber-50 border-amber-300 text-amber-950'
+                : 'bg-amber-950/80 border-amber-500/50 text-amber-300'
+            }`}>
+              <Clock className={`w-3.5 h-3.5 ${qTimeLeft <= 3 ? 'animate-spin' : ''}`} />
+              <span>{qTimeLeft}s</span>
+            </div>
+          )}
+
           {/* Current Score & Combo */}
           <div className="flex items-center gap-2">
             {combo > 1 && (
@@ -996,8 +1222,26 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           </div>
         </div>
 
+        {/* Per-Question Timer Progress Bar */}
+        {qTimeLeft !== null && getActiveModeTimer(gameMode) > 0 && (
+          <div className={`w-full h-1.5 rounded-full overflow-hidden mt-2 mb-1 ${
+            isLight ? 'bg-slate-200' : isNeon ? 'bg-[#04241d]' : 'bg-slate-900'
+          }`}>
+            <div
+              className={`h-full transition-all duration-300 ${
+                qTimeLeft > 5
+                  ? 'bg-gradient-to-r from-amber-400 to-emerald-400'
+                  : qTimeLeft > 3
+                  ? 'bg-amber-400'
+                  : 'bg-rose-500 animate-pulse'
+              }`}
+              style={{ width: `${Math.max(0, (qTimeLeft / getActiveModeTimer(gameMode)) * 100)}%` }}
+            />
+          </div>
+        )}
+
         {/* Progress Bar for Timer or Sprint Target */}
-        {(gameMode === 'blitz' || gameMode === 'daily') && (
+        {(gameMode === 'blitz' || (gameMode === 'daily' && dailyTimer === 0)) && (
           <div className={`w-full h-1.5 rounded-full overflow-hidden mt-2 mb-1 ${
             isLight ? 'bg-slate-200' : isNeon ? 'bg-[#04241d]' : 'bg-slate-900'
           }`}>
@@ -1381,33 +1625,64 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
               </div>
             )}
 
-            {/* Wrong Answer Correct Answer Notice Banner (for Audio, Survival, Daily, Focus) */}
-            {wrongCorrectionNotice && (
-              <div className={`mt-3 w-full max-w-sm mx-auto p-2.5 sm:p-3 rounded-2xl border-2 flex items-center justify-between gap-3 shadow-lg animate-in fade-in zoom-in-95 duration-200 ${
+            {/* Attractive Correct Answer Notification Banner */}
+            {correctNotice && feedback === 'correct' && (
+              <div className={`mt-3 w-full max-w-sm mx-auto p-2.5 sm:p-3 rounded-2xl border-2 flex items-center justify-between gap-2.5 shadow-lg animate-in fade-in zoom-in-95 duration-200 ${
                 isLight 
-                  ? 'bg-rose-50 border-rose-400 text-rose-950 shadow-rose-100' 
+                  ? 'bg-emerald-50 border-emerald-400 text-emerald-950 shadow-emerald-100 ring-2 ring-emerald-300' 
                   : isNeon
-                  ? 'bg-[#1a0508] border-rose-500/80 text-rose-100 shadow-rose-950/50'
-                  : 'bg-rose-950/90 border-rose-500/80 text-rose-100 shadow-rose-950/50'
+                  ? 'bg-[#03291e] border-emerald-400 text-emerald-100 shadow-emerald-950/50 ring-2 ring-emerald-500/50'
+                  : 'bg-emerald-950/90 border-emerald-500 text-emerald-100 shadow-emerald-950/50 ring-2 ring-emerald-500/40'
               }`}>
                 <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-green-600 text-slate-950 flex items-center justify-center shrink-0 font-black shadow-md text-base animate-bounce">
+                    ✓
+                  </div>
+                  <div className="text-left min-w-0">
+                    <p className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                      <span>✨ {language === 'id' ? 'HEBAT! JAWABAN BENAR! 🎉' : 'GREAT! CORRECT ANSWER! 🎉'}</span>
+                    </p>
+                    <p className="text-xs sm:text-sm font-bold text-emerald-950 dark:text-emerald-100">
+                      {language === 'id' ? 'Hasil Benar:' : 'Result:'}{' '}
+                      <span className="font-extrabold font-mono-math text-base sm:text-lg text-emerald-700 dark:text-emerald-200 underline decoration-2 ml-1">
+                        {correctNotice.correctAnswer}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <div className="px-2.5 py-1 rounded-xl bg-emerald-500 text-slate-950 font-mono-math text-xs font-black shrink-0 shadow-sm animate-pulse">
+                  +{correctNotice.pointsEarned} pts
+                </div>
+              </div>
+            )}
+
+            {/* Wrong Answer Correct Answer Notice Banner (for ALL modes) */}
+            {wrongCorrectionNotice && feedback === 'wrong' && (
+              <div className={`mt-3 w-full max-w-sm mx-auto p-2.5 sm:p-3 rounded-2xl border-2 flex items-center justify-between flex-wrap gap-2.5 shadow-lg animate-in fade-in zoom-in-95 duration-200 ${
+                isLight 
+                  ? 'bg-rose-50 border-rose-400 text-rose-950 shadow-rose-100 ring-2 ring-rose-200' 
+                  : isNeon
+                  ? 'bg-[#1a0508] border-rose-500/80 text-rose-100 shadow-rose-950/50 ring-2 ring-rose-900/50'
+                  : 'bg-rose-950/90 border-rose-500/80 text-rose-100 shadow-rose-950/50 ring-2 ring-rose-900/50'
+              }`}>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <div className="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 font-black shadow-xs text-sm">
                     ✕
                   </div>
                   <div className="text-left min-w-0">
-                    <p className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                    <p className="text-[10px] font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
                       {t.wrongCorrectionTitle}
                     </p>
-                    <p className="text-xs sm:text-sm font-semibold truncate">
+                    <p className="text-xs sm:text-sm font-bold text-rose-950 dark:text-rose-100 leading-tight">
                       {t.wrongCorrectionAnswer}{' '}
-                      <span className="font-extrabold font-mono-math text-base sm:text-lg text-rose-700 dark:text-rose-200 underline decoration-2">
+                      <span className="font-extrabold font-mono-math text-base sm:text-lg text-rose-600 dark:text-rose-200 underline decoration-2 ml-1">
                         {wrongCorrectionNotice.correctAnswer}
                       </span>
                     </p>
                   </div>
                 </div>
                 {wrongCorrectionNotice.userAnswer !== undefined && wrongCorrectionNotice.userAnswer !== '' && (
-                  <div className="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-300 font-mono-math text-[11px] font-bold shrink-0">
+                  <div className="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-700 dark:text-rose-200 font-mono-math text-[11px] font-extrabold shrink-0">
                     {t.yourChoiceLabel} {wrongCorrectionNotice.userAnswer}
                   </div>
                 )}
@@ -1986,6 +2261,24 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
             </button>
           )}
 
+          {onOpenProfile && (
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                onOpenProfile('history');
+              }}
+              className={`w-full h-10 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                isLight
+                  ? 'bg-sky-50 hover:bg-sky-100 border-sky-300 text-sky-950 shadow-xs'
+                  : 'bg-sky-500/15 border-sky-500/40 text-sky-300 hover:text-white hover:bg-sky-500/25'
+              }`}
+            >
+              <span>📜</span>
+              <span>{language === 'id' ? `Riwayat Soal Pemain (${playerName})` : `Question History (${playerName})`}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -2351,6 +2644,51 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           </div>
         </div>
 
+        {/* Quick Question History Link */}
+        {onOpenProfile && (
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playTap();
+              onOpenProfile('history');
+            }}
+            className={`w-full p-2.5 rounded-2xl border flex items-center justify-between transition-all cursor-pointer mt-1 ${
+              isLight
+                ? 'bg-amber-50/70 hover:bg-amber-100/80 border-amber-200 text-slate-900 shadow-xs'
+                : isNeon
+                ? 'bg-[#021814] hover:bg-[#03241e] border-emerald-500/40 text-emerald-100'
+                : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+                📜
+              </div>
+              <div className="text-left min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black truncate">
+                    {language === 'id' ? `Riwayat Soal (${playerName})` : `Question History (${playerName})`}
+                  </span>
+                  <span className="text-[9px] bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold px-1.5 py-0.2 rounded-full shrink-0">
+                    {questionHistory.length} {language === 'id' ? 'soal' : 'items'}
+                  </span>
+                </div>
+                <p className={`text-[10px] ${isLight ? 'text-slate-600' : 'text-slate-400'} truncate`}>
+                  {language === 'id'
+                    ? 'Lihat rincian soal yang benar & salah'
+                    : 'Review breakdown of correct & wrong answers'}
+                </p>
+              </div>
+            </div>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-xl shrink-0 flex items-center gap-1 ${
+              isLight ? 'bg-amber-500 text-slate-950 shadow-xs' : 'bg-amber-500/20 text-amber-300'
+            }`}>
+              <span>{language === 'id' ? 'Buka' : 'Open'}</span>
+              <ChevronRight className="w-3 h-3" />
+            </span>
+          </button>
+        )}
+
         {/* Section Header: Game Modes */}
         <div className="flex items-center justify-between pt-2 pb-1">
           <span className={`text-[11px] font-extrabold uppercase tracking-wider ${
@@ -2535,6 +2873,40 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                           }`}
                         >
                           {cnt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Timer Per Soal Row */}
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                      {t.perQuestionTimerLabel}
+                    </span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {[
+                        { val: 0, label: t.timerOff },
+                        { val: 10, label: '10s' },
+                        { val: 20, label: '20s' },
+                        { val: 30, label: '30s' }
+                      ].map(opt => (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sounds.playTap();
+                            setAudioTimer(opt.val);
+                          }}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono-math font-bold transition-all cursor-pointer ${
+                            audioTimer === opt.val
+                              ? 'bg-purple-600 text-white font-black shadow-xs scale-105'
+                              : isLight
+                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                              : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          {opt.label}
                         </button>
                       ))}
                     </div>
@@ -2822,6 +3194,40 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                     </>
                   )}
 
+                  {/* Timer Per Soal Selector Row */}
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap pt-1">
+                    <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                      {t.perQuestionTimerLabel}
+                    </span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {[
+                        { val: 0, label: t.timerOff },
+                        { val: 10, label: '10s' },
+                        { val: 20, label: '20s' },
+                        { val: 30, label: '30s' }
+                      ].map(opt => (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sounds.playTap();
+                            setFocusTimer(opt.val);
+                          }}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono-math font-bold transition-all cursor-pointer ${
+                            focusTimer === opt.val
+                              ? 'bg-emerald-500 text-white font-black shadow-xs scale-105'
+                              : isLight
+                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                              : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Target Questions selector & Start Button */}
                   <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
                     <div className="flex items-center gap-1 flex-wrap">
@@ -2869,18 +3275,15 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
           </div>
 
           {/* Mode 5: Bertahan Hidup (Survival) */}
-          <button
-            onClick={() => startGame('survival')}
-            className={`w-full group relative overflow-hidden rounded-2xl p-3.5 text-left transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-sm border ${
-              isLight
-                ? 'bg-white hover:bg-rose-50/80 border-slate-200 hover:border-rose-400'
-                : isNeon
-                ? 'bg-[#04241d] hover:bg-[#07362a] border-rose-500/40 hover:border-rose-400 shadow-md'
-                : 'bg-gradient-to-r from-rose-500/15 via-pink-500/10 to-slate-900/80 border-rose-500/30 hover:border-rose-400 shadow-md'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center text-white font-black shadow-md shrink-0">
+          <div className={`w-full group relative overflow-hidden rounded-2xl p-3.5 text-left transition-all duration-200 shadow-sm border ${
+            isLight
+              ? 'bg-white hover:bg-rose-50/80 border-slate-200 hover:border-rose-400'
+              : isNeon
+              ? 'bg-[#04241d] border-rose-500/40 hover:border-rose-400 shadow-md'
+              : 'bg-gradient-to-r from-rose-500/15 via-pink-500/10 to-slate-900/80 border-rose-500/30 hover:border-rose-400 shadow-md'
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-rose-500 to-pink-500 flex items-center justify-center text-white font-black shadow-md shrink-0 mt-0.5">
                 <Heart className="w-5 h-5 fill-white" />
               </div>
               <div className="flex-1 min-w-0">
@@ -2901,26 +3304,67 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                 <p className={`text-[11px] mt-0.5 leading-snug ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
                   {isVip ? t.modeSurvivalDescVip : t.modeSurvivalDescNormal}
                 </p>
+
+                {/* Survival Controls */}
+                <div className={`mt-2.5 pt-2 border-t flex items-center justify-between gap-2 flex-wrap ${
+                  isLight ? 'border-slate-200' : 'border-slate-800/80'
+                }`}>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                      {t.perQuestionTimerLabel}
+                    </span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {[
+                        { val: 0, label: t.timerOff },
+                        { val: 10, label: '10s' },
+                        { val: 20, label: '20s' },
+                        { val: 30, label: '30s' }
+                      ].map(opt => (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sounds.playTap();
+                            setSurvivalTimer(opt.val);
+                          }}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono-math font-bold transition-all cursor-pointer ${
+                            survivalTimer === opt.val
+                              ? 'bg-rose-500 text-white font-black shadow-xs scale-105'
+                              : isLight
+                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                              : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => startGame('survival')}
+                    className="px-3 py-1 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 text-white font-black text-xs shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1 ml-auto"
+                  >
+                    <span>{language === 'id' ? 'Mulai Bertahan' : 'Start Survival'}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-              <ChevronRight className={`w-4 h-4 shrink-0 transition-all group-hover:translate-x-0.5 ${
-                isLight ? 'text-slate-400 group-hover:text-rose-600' : 'text-slate-500 group-hover:text-rose-400'
-              }`} />
             </div>
-          </button>
+          </div>
 
           {/* Mode 6: Tantangan Harian (Daily Quest) */}
-          <button
-            onClick={() => startGame('daily')}
-            className={`w-full group relative overflow-hidden rounded-2xl p-3.5 text-left transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-sm border ${
-              isLight
-                ? 'bg-white hover:bg-emerald-50/80 border-slate-200 hover:border-emerald-400'
-                : isNeon
-                ? 'bg-[#04241d] hover:bg-[#07362a] border-emerald-500/40 hover:border-emerald-400 shadow-md'
-                : 'bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-slate-900/80 border-emerald-500/30 hover:border-emerald-400 shadow-md'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-400 to-teal-500 flex items-center justify-center text-slate-950 font-black shadow-md shrink-0">
+          <div className={`w-full group relative overflow-hidden rounded-2xl p-3.5 text-left transition-all duration-200 shadow-sm border ${
+            isLight
+              ? 'bg-white hover:bg-emerald-50/80 border-slate-200 hover:border-emerald-400'
+              : isNeon
+              ? 'bg-[#04241d] border-emerald-500/40 hover:border-emerald-400 shadow-md'
+              : 'bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-slate-900/80 border-emerald-500/30 hover:border-emerald-400 shadow-md'
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-400 to-teal-500 flex items-center justify-center text-slate-950 font-black shadow-md shrink-0 mt-0.5">
                 <Award className="w-5 h-5 fill-slate-950" />
               </div>
               <div className="flex-1 min-w-0">
@@ -2941,12 +3385,56 @@ export const PlayScreen: React.FC<PlayScreenProps> = ({
                 <p className={`text-[11px] mt-0.5 leading-snug ${isLight ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
                   {t.modeDailyDesc}
                 </p>
+
+                {/* Daily Controls */}
+                <div className={`mt-2.5 pt-2 border-t flex items-center justify-between gap-2 flex-wrap ${
+                  isLight ? 'border-slate-200' : 'border-slate-800/80'
+                }`}>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-[10px] font-bold ${isLight ? 'text-slate-700' : 'text-slate-400'}`}>
+                      {t.perQuestionTimerLabel}
+                    </span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {[
+                        { val: 0, label: t.timerOff },
+                        { val: 10, label: '10s' },
+                        { val: 20, label: '20s' },
+                        { val: 30, label: '30s' }
+                      ].map(opt => (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sounds.playTap();
+                            setDailyTimer(opt.val);
+                          }}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono-math font-bold transition-all cursor-pointer ${
+                            dailyTimer === opt.val
+                              ? 'bg-emerald-500 text-white font-black shadow-xs scale-105'
+                              : isLight
+                              ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                              : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => startGame('daily')}
+                    className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-black text-xs shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1 ml-auto"
+                  >
+                    <span>{language === 'id' ? 'Mulai Misi' : 'Start Mission'}</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-              <ChevronRight className={`w-4 h-4 shrink-0 transition-all group-hover:translate-x-0.5 ${
-                isLight ? 'text-slate-400 group-hover:text-emerald-600' : 'text-slate-500 group-hover:text-emerald-400'
-              }`} />
             </div>
-          </button>
+          </div>
         </div>
       </div>
 

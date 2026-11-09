@@ -20,6 +20,12 @@ function MainContent() {
   const [activeTab, setActiveTab] = useState<TabType>('play');
   const [isCertificateOpen, setIsCertificateOpen] = useState<boolean>(false);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+  const [profileInitialTab, setProfileInitialTab] = useState<'profile' | 'history' | 'gas'>('profile');
+
+  const handleOpenProfile = (tab: 'profile' | 'history' | 'gas' = 'profile') => {
+    setProfileInitialTab(tab);
+    setIsProfileOpen(true);
+  };
 
   return (
     <AndroidFrame
@@ -27,7 +33,7 @@ function MainContent() {
     >
       {/* Top Bar inside Android Frame */}
       <HeaderNav
-        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenProfile={handleOpenProfile}
         onOpenShop={() => setActiveTab('shop')}
       />
 
@@ -38,7 +44,7 @@ function MainContent() {
             onOpenTricks={() => setActiveTab('tricks')}
             onOpenLeaderboard={() => setActiveTab('leaderboard')}
             onOpenShop={() => setActiveTab('shop')}
-            onOpenProfile={() => setIsProfileOpen(true)}
+            onOpenProfile={handleOpenProfile}
             onOpenCertificate={() => setIsCertificateOpen(true)}
           />
         )}
@@ -63,6 +69,7 @@ function MainContent() {
 
       <ProfileModal
         isOpen={isProfileOpen}
+        initialTab={profileInitialTab}
         onClose={() => setIsProfileOpen(false)}
         onOpenCertificate={() => setIsCertificateOpen(true)}
       />

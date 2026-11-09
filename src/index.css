@@ -15,6 +15,17 @@
   }
 }
 
+/* Hide number input spinner arrows across browsers */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Custom scrollbars and touch optimizations */
 ::-webkit-scrollbar {
   width: 6px;
@@ -158,4 +169,330 @@ html, body, #root {
 .animate-screen-shake {
   animation: screen-shake-subtle 0.35s ease-in-out;
 }
+
+@keyframes punch-stretch {
+  0% { transform: scaleX(0.1) scaleY(0.7) translateX(-20px); opacity: 0; }
+  40% { transform: scaleX(1.3) scaleY(1.2) translateX(60px); opacity: 1; }
+  80% { transform: scaleX(1.1) scaleY(1) translateX(40px); opacity: 1; }
+  100% { transform: scaleX(0.5) scaleY(0.8) translateX(0); opacity: 0; }
+}
+
+.animate-punch-stretch {
+  animation: punch-stretch 0.45s ease-out forwards;
+}
+
+@keyframes comic-pop {
+  0% { transform: scale(0.2) rotate(-15deg); opacity: 0; }
+  50% { transform: scale(1.3) rotate(6deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.animate-comic-pop {
+  animation: comic-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes sea-bob {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-7px) rotate(1.2deg); }
+}
+
+.animate-sea-bob {
+  animation: sea-bob 3s ease-in-out infinite;
+}
+
+@keyframes monster-hit {
+  0%, 100% { transform: translate(0, 0) scale(1); filter: none; }
+  20% { transform: translate(12px, -6px) scale(0.9) rotate(5deg); filter: brightness(2) drop-shadow(0 0 20px #ef4444); }
+  40% { transform: translate(-8px, 6px) scale(0.94) rotate(-4deg); filter: drop-shadow(0 0 15px #f97316); }
+  60% { transform: translate(6px, -2px) scale(0.97); }
+}
+
+.animate-monster-hit {
+  animation: monster-hit 0.45s ease-in-out;
+}
+
+/* Floating Combat Text (Damage Melayang) */
+@keyframes float-damage {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  15% { transform: translateY(-12px) scale(1.3); opacity: 1; }
+  60% { transform: translateY(-35px) scale(1.05); opacity: 0.95; }
+  100% { transform: translateY(-55px) scale(0.85); opacity: 0; }
+}
+
+.animate-float-damage {
+  animation: float-damage 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Sumbu Meriam Spark Animation */
+@keyframes fuse-spark {
+  0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 6px #f59e0b) brightness(1.2); }
+  50% { transform: scale(1.35) rotate(15deg); filter: drop-shadow(0 0 14px #ef4444) brightness(1.7); }
+}
+
+.animate-fuse-spark {
+  animation: fuse-spark 0.2s infinite alternate ease-in-out;
+}
+
+/* Dynamic Moving Ocean Waves */
+@keyframes wave-drift {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-30px); }
+  100% { transform: translateX(0); }
+}
+
+.animate-wave-drift {
+  animation: wave-drift 5s ease-in-out infinite;
+}
+
+@keyframes wave-drift-reverse {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(25px); }
+  100% { transform: translateX(0); }
+}
+
+.animate-wave-drift-reverse {
+  animation: wave-drift-reverse 6s ease-in-out infinite;
+}
+
+/* Drifting Sky Clouds */
+@keyframes cloud-drift {
+  0% { transform: translateX(-6%); }
+  50% { transform: translateX(6%); }
+  100% { transform: translateX(-6%); }
+}
+
+.animate-cloud-drift {
+  animation: cloud-drift 16s ease-in-out infinite;
+}
+
+/* White Impact Flash (100ms) */
+@keyframes impact-flash {
+  0% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+.animate-impact-flash {
+  animation: impact-flash 0.12s ease-out forwards;
+}
+
+/* Red Screen Flash on Damage */
+@keyframes red-flash {
+  0% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+.animate-red-flash {
+  animation: red-flash 0.35s ease-out forwards;
+}
+
+/* Steam Train Roof Chug Vibration */
+@keyframes train-chug {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+.animate-train-chug {
+  animation: train-chug 0.18s infinite ease-in-out;
+}
+
+/* Parallax Far (Night Clouds / Mountain silhouette) */
+@keyframes parallax-far {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-parallax-far {
+  animation: parallax-far 24s linear infinite;
+}
+
+/* Parallax Mid (Distant Pine Trees & Mist) */
+@keyframes parallax-mid {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-parallax-mid {
+  animation: parallax-mid 6s linear infinite;
+}
+
+/* Parallax Near (Trackside Telegraph Poles & Speed Lines) */
+@keyframes parallax-near {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-parallax-near {
+  animation: parallax-near 1.4s linear infinite;
+}
+
+/* Steam Smoke Puffs Trailing from Train Chimney */
+@keyframes steam-trail {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0.8; }
+  50% { transform: translate(-100px, -18px) scale(1.4); opacity: 0.5; }
+  100% { transform: translate(-220px, -40px) scale(2.2); opacity: 0; }
+}
+
+.animate-steam-trail {
+  animation: steam-trail 1.8s infinite ease-out;
+}
+
+/* Anime Water & Flame Sword Slash Arc */
+@keyframes anime-sword-slash {
+  0% {
+    transform: scale(0.3) rotate(-30deg) translate(-20px, 20px);
+    opacity: 0;
+    filter: drop-shadow(0 0 8px #38bdf8);
+  }
+  30% {
+    transform: scale(1.2) rotate(10deg) translate(20px, -10px);
+    opacity: 1;
+    filter: drop-shadow(0 0 25px #06b6d4) drop-shadow(0 0 35px #f43f5e);
+  }
+  70% {
+    transform: scale(1.35) rotate(25deg) translate(50px, -20px);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5) rotate(35deg) translate(80px, -30px);
+    opacity: 0;
+  }
+}
+
+.animate-sword-slash {
+  animation: anime-sword-slash 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Train Carriage Detach / Destruction on Wave Clear */
+@keyframes carriage-detach {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  35% { transform: translate(30px, 6px) rotate(3deg) scale(0.96); opacity: 0.9; }
+  100% { transform: translate(140px, 35px) rotate(12deg) scale(0.8); opacity: 0; }
+}
+
+.animate-carriage-detach {
+  animation: carriage-detach 1.2s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+}
+
+/* Iblis Demon Combat Effects & Aura */
+@keyframes demon-aura-pulse {
+  0% {
+    filter: drop-shadow(0 0 10px rgba(220, 38, 38, 0.75)) drop-shadow(0 0 20px rgba(126, 34, 206, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 18px rgba(239, 68, 68, 0.95)) drop-shadow(0 0 32px rgba(185, 28, 28, 0.85));
+  }
+  100% {
+    filter: drop-shadow(0 0 10px rgba(220, 38, 38, 0.75)) drop-shadow(0 0 20px rgba(126, 34, 206, 0.5));
+  }
+}
+
+.aura-iblis {
+  animation: demon-aura-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes iblis-serang-anim {
+  0% {
+    transform: translateX(0) scale(1);
+  }
+  35% {
+    transform: translateX(-30px) scale(1.18);
+  }
+  70% {
+    transform: translateX(-20px) scale(1.1);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+.iblis-serang {
+  animation: iblis-serang-anim 0.35s ease-in-out !important;
+}
+
+@keyframes iblis-hit-anim {
+  0% {
+    filter: brightness(2) contrast(2) drop-shadow(0 0 25px #ef4444);
+    transform: translateX(12px) rotate(5deg) scale(0.92);
+  }
+  40% {
+    filter: brightness(1.8) contrast(1.7) drop-shadow(0 0 18px #f97316);
+    transform: translateX(8px) rotate(-3deg) scale(0.95);
+  }
+  100% {
+    filter: brightness(1) contrast(1);
+    transform: translateX(0) rotate(0deg) scale(1);
+  }
+}
+
+.iblis-terkena-hit {
+  animation: iblis-hit-anim 0.45s ease-in-out !important;
+}
+
+@keyframes iblis-kalah-anim {
+  0% {
+    opacity: 1;
+    filter: brightness(1.2);
+    transform: scale(1);
+  }
+  40% {
+    opacity: 0.7;
+    filter: brightness(2) blur(3px) drop-shadow(0 0 20px #ef4444);
+    transform: scale(0.85) translateY(6px);
+  }
+  100% {
+    opacity: 0;
+    filter: brightness(3) blur(10px);
+    transform: scale(0.35) translateY(24px);
+  }
+}
+
+.iblis-kalah {
+  animation: iblis-kalah-anim 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+}
+
+/* Pendekar Pedang (Pejuang) Combat Animations */
+@keyframes pejuang-menyerang-anim {
+  0% {
+    transform: scale(1) translateX(0) rotate(0deg);
+  }
+  40% {
+    transform: scale(1.1) translateX(40px) rotate(15deg);
+  }
+  75% {
+    transform: scale(1.06) translateX(25px) rotate(8deg);
+  }
+  100% {
+    transform: scale(1) translateX(0) rotate(0deg);
+  }
+}
+
+.pejuang-menyerang {
+  animation: pejuang-menyerang-anim 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28) !important;
+}
+
+@keyframes pejuang-terluka-anim {
+  0% {
+    filter: brightness(2) contrast(1.8) drop-shadow(0 0 16px #ef4444);
+    transform: translateX(0) rotate(0deg);
+  }
+  35% {
+    filter: brightness(2.2) contrast(2) drop-shadow(0 0 20px #ef4444);
+    transform: translateX(-20px) rotate(-5deg);
+  }
+  70% {
+    filter: brightness(1.5) contrast(1.3);
+    transform: translateX(-10px) rotate(2deg);
+  }
+  100% {
+    filter: brightness(1) contrast(1);
+    transform: translateX(0) rotate(0deg);
+  }
+}
+
+.pejuang-terluka {
+  animation: pejuang-terluka-anim 0.45s ease-in-out !important;
+}
+
+
+
 

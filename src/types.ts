@@ -79,6 +79,20 @@ export interface MentalTrick {
   costToUnlock?: number;
 }
 
+export interface QuestionHistoryItem {
+  id: string;
+  questionText: string;
+  question?: string;
+  userAnswer: number | string;
+  correctAnswer: number;
+  isCorrect: boolean;
+  timestamp: string | number;
+  mode: GameMode | string;
+  level?: DifficultyLevel | string;
+  difficulty?: string;
+  responseTimeSec?: number;
+}
+
 export interface PlayerProfile {
   id: string;
   name: string;
@@ -89,6 +103,7 @@ export interface PlayerProfile {
   achievements: Achievement[];
   unlockedTricks: string[];
   createdAt: string;
+  questionHistory?: QuestionHistoryItem[];
 }
 
 export interface ShopItem {

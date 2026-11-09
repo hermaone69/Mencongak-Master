@@ -1,5 +1,4 @@
-import React from 'react';
-import { Play, Sparkles, Swords, Trophy, ShoppingBag } from 'lucide-react';
+import { Play, Sparkles, Gamepad2, Trophy, ShoppingBag } from 'lucide-react';
 import { sounds } from '../utils/audio';
 import { useGame } from '../context/GameContext';
 import { getTranslation } from '../utils/translations';
@@ -20,7 +19,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab })
   const tabs = [
     { id: 'play' as TabType, label: t.navPlay, icon: Play },
     { id: 'tricks' as TabType, label: t.navTricks, icon: Sparkles },
-    { id: 'duel' as TabType, label: t.navDuel, icon: Swords },
+    { id: 'duel' as TabType, label: t.navDuel, icon: Gamepad2 },
     { id: 'leaderboard' as TabType, label: t.navLeaderboard, icon: Trophy },
     { id: 'shop' as TabType, label: t.navShop, icon: ShoppingBag }
   ];

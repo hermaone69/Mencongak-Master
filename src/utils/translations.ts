@@ -6,9 +6,25 @@ export const translations = {
     appSubtitle: 'Latihan Aritmatika & Hitung Cepat Mental',
     navPlay: 'Main',
     navTricks: 'Trik Kilat',
-    navDuel: 'Duel AI',
+    navDuel: 'Mini Game',
     navLeaderboard: 'Peringkat',
     navShop: 'Toko',
+
+    // Pirate Mini Game (Bajak Laut Mencongak)
+    pirateGameTitle: 'Bajak Laut Mencongak',
+    pirateGameSubtitle: 'Bantu Kapten Luffy kalahkan monster laut dengan hitung cepat!',
+    bountyLabel: 'Harga Buronan',
+    attackBtnText: 'Serang!',
+    hitText: 'Kena!',
+    luffyHpLabel: 'HP Luffy',
+    monsterHpLabel: 'HP Monster',
+    monsterDefeatedText: 'Monster Tumbang! 🎉',
+    newMonsterNotice: 'Monster Baru Mengganas!',
+    pirateGameOver: 'Kapal Karam! (Game Over)',
+    playAgainBtn: 'Main Lagi 🔄',
+    finalBountyLabel: 'Buronan Tertinggi',
+    monstersDefeatedLabel: 'Monster Ditumbangkan',
+
 
     // Header & Profile
     switchPlayer: 'Ganti',
@@ -83,6 +99,11 @@ export const translations = {
     wrongCorrectionTitle: 'Jawaban Kurang Tepat',
     wrongCorrectionAnswer: 'Jawaban yang benar:',
     yourChoiceLabel: 'Pilihanmu:',
+    perQuestionTimerLabel: 'Timer Per Soal:',
+    timerOff: 'Nonaktif',
+    timer10s: '10 Detik',
+    timer20s: '20 Detik',
+    timer30s: '30 Detik',
     speechCorrect: 'Benar! Jawabannya',
     speechWrong: 'Salah! Jawabannya',
 
@@ -258,16 +279,50 @@ export const translations = {
     inputModeOptionsTitle: 'Pilihan Ganda (4 Opsi)',
     inputModeOptionsSubtitle: 'Klik 1 dari 4 tombol pilihan jawaban cepat',
     inputModeKeypadTitle: 'Ketik Sendiri (Numpad)',
-    inputModeKeypadSubtitle: 'Ketik angka jawaban sendiri lalu tekan ENTER'
+    inputModeKeypadSubtitle: 'Ketik angka jawaban sendiri lalu tekan ENTER',
+
+    // Riwayat Soal (Question History)
+    historyTabLabel: 'Riwayat Soal',
+    profileTabLabel: 'Profil & Akun',
+    historyTitle: 'Riwayat Pengerjaan Soal',
+    historySubtitle: 'Daftar semua soal yang pernah dikerjakan oleh profil pemain ini.',
+    filterAllHistory: 'Semua Soal',
+    filterCorrectHistory: 'Benar Saja',
+    filterWrongHistory: 'Salah Saja',
+    clearHistoryBtn: 'Bersihkan Riwayat',
+    clearHistoryConfirm: 'Yakin ingin mengosongkan riwayat soal untuk profil ini?',
+    noHistoryYet: 'Belum ada riwayat pengerjaan soal. Mainkan mode latihan untuk melihat catatan soalmu di sini!',
+    noHistoryCorrectYet: 'Belum ada soal yang dijawab benar pada filter ini.',
+    noHistoryWrongYet: 'Luar biasa! Tidak ada riwayat soal salah untuk filter ini.',
+    historyCorrectBadge: 'BENAR',
+    historyWrongBadge: 'SALAH',
+    historyAnsweredAt: 'Dikerjakan',
+    viewAllHistoryBtn: 'Lihat Semua Riwayat Soal'
   },
   en: {
     appTitle: 'Mental Math Master Pro',
     appSubtitle: 'Speed Arithmetic & Mental Math Training Game',
     navPlay: 'Play',
     navTricks: 'Fast Tricks',
-    navDuel: 'AI Duel',
+    navDuel: 'Mini Game',
     navLeaderboard: 'Ranks',
     navShop: 'Shop',
+
+    // Pirate Mini Game
+    pirateGameTitle: 'Pirate Math Battle',
+    pirateGameSubtitle: 'Help Captain Luffy defeat sea monsters with mental math!',
+    bountyLabel: 'Bounty',
+    attackBtnText: 'Attack!',
+    hitText: 'HIT!',
+    luffyHpLabel: 'Luffy HP',
+    monsterHpLabel: 'Monster HP',
+    monsterDefeatedText: 'Monster Defeated! 🎉',
+    newMonsterNotice: 'A New Monster Awakens!',
+    pirateGameOver: 'Shipwrecked! (Game Over)',
+    playAgainBtn: 'Play Again 🔄',
+    finalBountyLabel: 'Final Bounty',
+    monstersDefeatedLabel: 'Monsters Defeated',
+
 
     // Header & Profile
     switchPlayer: 'Switch',
@@ -342,6 +397,11 @@ export const translations = {
     wrongCorrectionTitle: 'Incorrect Answer',
     wrongCorrectionAnswer: 'Correct answer is:',
     yourChoiceLabel: 'Your choice:',
+    perQuestionTimerLabel: 'Timer Per Question:',
+    timerOff: 'Off',
+    timer10s: '10 Sec',
+    timer20s: '20 Sec',
+    timer30s: '30 Sec',
     speechCorrect: 'Correct! Answer is',
     speechWrong: 'Incorrect! Answer is',
 
@@ -517,7 +577,25 @@ export const translations = {
     inputModeOptionsTitle: 'Multiple Choice (4 Options)',
     inputModeOptionsSubtitle: 'Tap 1 of 4 answer options to reply fast',
     inputModeKeypadTitle: 'Type Yourself (Numpad)',
-    inputModeKeypadSubtitle: 'Type custom numbers and press ENTER'
+    inputModeKeypadSubtitle: 'Type custom numbers and press ENTER',
+
+    // Question History
+    historyTabLabel: 'Question History',
+    profileTabLabel: 'Profile & Account',
+    historyTitle: 'Solved Question History',
+    historySubtitle: 'Record of all math problems solved by this player profile.',
+    filterAllHistory: 'All Questions',
+    filterCorrectHistory: 'Correct Only',
+    filterWrongHistory: 'Wrong Only',
+    clearHistoryBtn: 'Clear History',
+    clearHistoryConfirm: 'Are you sure you want to clear question history for this profile?',
+    noHistoryYet: 'No question history recorded yet. Play any game mode to see your answers here!',
+    noHistoryCorrectYet: 'No correct answers found for this filter.',
+    noHistoryWrongYet: 'Awesome! No incorrect answers found for this filter.',
+    historyCorrectBadge: 'CORRECT',
+    historyWrongBadge: 'WRONG',
+    historyAnsweredAt: 'Solved',
+    viewAllHistoryBtn: 'View All Question History'
   }
 };
 
