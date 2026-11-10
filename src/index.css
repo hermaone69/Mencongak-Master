@@ -161,13 +161,17 @@ html, body, #root {
 }
 
 @keyframes screen-shake-subtle {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-4px); }
-  40%, 80% { transform: translateX(4px); }
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  15% { transform: translate(-8px, 4px) rotate(-1deg); }
+  30% { transform: translate(8px, -4px) rotate(1deg); }
+  45% { transform: translate(-6px, -3px) rotate(-0.5deg); }
+  60% { transform: translate(6px, 3px) rotate(0.5deg); }
+  75% { transform: translate(-3px, 1px); }
+  90% { transform: translate(3px, -1px); }
 }
 
-.animate-screen-shake {
-  animation: screen-shake-subtle 0.35s ease-in-out;
+.animate-screen-shake, .screen-shake {
+  animation: screen-shake-subtle 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 @keyframes punch-stretch {
@@ -201,14 +205,52 @@ html, body, #root {
 }
 
 @keyframes monster-hit {
-  0%, 100% { transform: translate(0, 0) scale(1); filter: none; }
-  20% { transform: translate(12px, -6px) scale(0.9) rotate(5deg); filter: brightness(2) drop-shadow(0 0 20px #ef4444); }
-  40% { transform: translate(-8px, 6px) scale(0.94) rotate(-4deg); filter: drop-shadow(0 0 15px #f97316); }
-  60% { transform: translate(6px, -2px) scale(0.97); }
+  0%, 100% { 
+    transform: translate(0, 0) scale(1); 
+    filter: none; 
+  }
+  20% { 
+    transform: translate(14px, -8px) scale(0.9) rotate(6deg); 
+    filter: brightness(2) sepia(1) hue-rotate(-50deg) saturate(5) drop-shadow(0 0 25px #ef4444); 
+  }
+  40% { 
+    transform: translate(-10px, 8px) scale(0.93) rotate(-5deg); 
+    filter: brightness(1.8) sepia(0.8) hue-rotate(-40deg) saturate(4) drop-shadow(0 0 20px #dc2626); 
+  }
+  60% { 
+    transform: translate(8px, -4px) scale(0.96) rotate(3deg); 
+    filter: brightness(1.4) sepia(0.4) saturate(2);
+  }
+  80% {
+    transform: translate(-4px, 2px) scale(0.98);
+  }
 }
 
 .animate-monster-hit {
-  animation: monster-hit 0.45s ease-in-out;
+  animation: monster-hit 0.5s ease-in-out forwards;
+}
+
+/* Luffy Combat Animations */
+@keyframes luffy-menyerang-anim {
+  0% { transform: scale(1) translateX(0); }
+  35% { transform: scale(1.12) translateX(38px); }
+  70% { transform: scale(1.05) translateX(20px); }
+  100% { transform: scale(1) translateX(0); }
+}
+
+.luffy-menyerang {
+  animation: luffy-menyerang-anim 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28) !important;
+}
+
+@keyframes luffy-terluka-anim {
+  0% { filter: brightness(2) contrast(1.8) drop-shadow(0 0 16px #ef4444); transform: translateX(0); }
+  35% { filter: brightness(2.2) contrast(2) drop-shadow(0 0 22px #ef4444); transform: translateX(-22px) rotate(-6deg); }
+  70% { filter: brightness(1.5) contrast(1.3); transform: translateX(-10px) rotate(2deg); }
+  100% { filter: brightness(1) contrast(1); transform: translateX(0); }
+}
+
+.luffy-terluka {
+  animation: luffy-terluka-anim 0.45s ease-in-out !important;
 }
 
 /* Floating Combat Text (Damage Melayang) */

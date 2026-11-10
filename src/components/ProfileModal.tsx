@@ -136,14 +136,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const codeGsSource = `/**
  * Mencongak Master Pro - Google Apps Script Backend
  * File: Code.gs
- * Versi: 2.9 (Fitur: Karakter Pendekar Pedang Anime Chibi Detail Tanjiro Style, Katana Aura Tebasan, Animasi .pejuang-menyerang & .pejuang-terluka, Ikon HP Avatar Anime, Karakter Iblis SVG Detail, Mini Game Kereta Uap Mugen Express, Bajak Laut Luffy, Riwayat Soal Profil)
+ * Versi: 3.1 (Fitur: Total Revamp Karakter Bajak Laut Chibi Anime SVG: Kapten Luffy & 5 Wave Musuh Samudera [Gurita Kurotako, Manusia Hiu Arlong, Bajak Laut Hantu Skeleton, Golem Karang, Boss Naga Leviathan], Pukulan Melar Gomu-Gomu, Arena Terbuka Dek Geladak Kapal, Animasi Berkedip Merah & Screen Shake)
  * Diperbarui otomatis untuk deployment Web App GAS
  */
 
 function doGet(e) {
   var template = HtmlService.createTemplateFromFile('Index');
   return template.evaluate()
-    .setTitle('Mencongak Master Pro - Latihan Hitung Cepat Mental & Mini Game Kereta Uap Mugen Express')
+    .setTitle('Mencongak Master Pro - Latihan Hitung Cepat Mental & Mini Game Bajak Laut vs Monster Samudera')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
 }
@@ -238,7 +238,7 @@ function getTopBounties() {
   </div>
 
   <script>
-    console.log("Mencongak Master Pro GAS Web App v2.9 initialized with Anime Chibi Swordsman (Tanjiro Style) & Mugen Train Battle.");
+    console.log("Mencongak Master Pro GAS Web App v3.0 initialized with Mobile Native Keyboard Prevention & Touch Numpad.");
   </script>
 </body>
 </html>`;

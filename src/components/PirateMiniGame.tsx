@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   Heart, Shield, Sparkles, Swords, RefreshCw, Zap, Trophy,
-  SlidersHorizontal, CheckCircle2, XCircle, PenTool, Skull, ArrowRight, Flame, Bomb
+  SlidersHorizontal, CheckCircle2, XCircle, PenTool, Skull, ArrowRight, Flame, Bomb, Keyboard
 } from 'lucide-react';
 import { DifficultyLevel, MathOperation, Question } from '../types';
 import { generateQuestion, getLevelMaxConfig } from '../utils/mathGenerator';
@@ -10,6 +10,10 @@ import { useGame } from '../context/GameContext';
 import { sounds } from '../utils/audio';
 import { ScratchpadCanvas } from './ScratchpadCanvas';
 import { getTranslation } from '../utils/translations';
+import { PirateSceneryBg } from './PirateSceneryBg';
+import { LuffyCharacterSvg, LuffyAvatarSvg } from './LuffyCharacterSvg';
+import { PirateMonsterSvg, PirateMonsterType } from './PirateMonsterSvg';
+
 
 interface SeaMonster {
   id: string;
@@ -19,7 +23,7 @@ interface SeaMonster {
   bountyReward: number;
   themeColor: string;
   attackName: string;
-  avatarType: 'kraken' | 'shark' | 'crab' | 'serpent' | 'neptune';
+  avatarType: PirateMonsterType;
 }
 
 interface FloatingCombatText {
@@ -39,47 +43,47 @@ const SEA_MONSTERS: SeaMonster[] = [
     bountyReward: 30000000,
     themeColor: 'from-purple-500 to-indigo-600',
     attackName: 'Semprotan Tinta Laut! 🐙💦',
-    avatarType: 'kraken'
+    avatarType: 'kurotako'
   },
   {
-    id: 'shark_chomper',
-    name: 'Hiu Karang Sharko',
-    title: 'Pemangsa Karang Tajam',
-    maxHp: 120,
+    id: 'shark_arlong',
+    name: 'Manusia Hiu (Arlong)',
+    title: 'Hiu Gergaji Samudera',
+    maxHp: 125,
     bountyReward: 50000000,
     themeColor: 'from-cyan-500 to-blue-700',
-    attackName: 'Gigitan Ombak Ganas! 🦈⚡',
-    avatarType: 'shark'
+    attackName: 'Tusukan Hidung Gergaji! 🦈⚓',
+    avatarType: 'arlong'
   },
   {
-    id: 'crab_iron',
-    name: 'Kepiting Kanimon',
-    title: 'Penjepit Baja Karang',
-    maxHp: 140,
+    id: 'ghost_skeleton',
+    name: 'Bajak Laut Hantu',
+    title: 'Kapten Tengkorak Lumut',
+    maxHp: 150,
     bountyReward: 75000000,
-    themeColor: 'from-orange-500 to-rose-600',
-    attackName: 'Capitan Karang Raksasa! 🦀💥',
-    avatarType: 'crab'
-  },
-  {
-    id: 'serpent_levi',
-    name: 'Naga Samudera Leviathan',
-    title: 'Penguasa Badai Laut',
-    maxHp: 160,
-    bountyReward: 100000000,
     themeColor: 'from-emerald-500 to-teal-800',
-    attackName: 'Pusaran Naga Air! 🐉🌊',
-    avatarType: 'serpent'
+    attackName: 'Ayunan Pedang Terkutuk! 💀⚔️',
+    avatarType: 'skeleton'
   },
   {
-    id: 'king_neptune',
-    name: 'Kaisar Laut Purba',
-    title: 'Raja Monster Grand Line',
-    maxHp: 200,
+    id: 'coral_golem',
+    name: 'Golem Karang Laut',
+    title: 'Raksasa Batu Terumbu',
+    maxHp: 175,
+    bountyReward: 100000000,
+    themeColor: 'from-slate-500 to-cyan-700',
+    attackName: 'Hantaman Tinju Batu! 🗿💥',
+    avatarType: 'golem'
+  },
+  {
+    id: 'boss_leviathan',
+    name: 'Naga Laut Leviathan',
+    title: 'Penguasa Badai Grand Line',
+    maxHp: 220,
     bountyReward: 150000000,
-    themeColor: 'from-amber-500 to-orange-700',
-    attackName: 'Murka Trisula Samudera! 👑🔱',
-    avatarType: 'neptune'
+    themeColor: 'from-amber-500 to-blue-900',
+    attackName: 'Semburan Murka Samudera! 🐉🌊',
+    avatarType: 'leviathan'
   }
 ];
 
@@ -145,6 +149,7 @@ export const PirateMiniGame: React.FC = () => {
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'hit' | 'miss'; text: string } | null>(null);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [showTouchKeypad, setShowTouchKeypad] = useState<boolean>(true);
+  const [useNativeKeyboard, setUseNativeKeyboard] = useState<boolean>(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -166,12 +171,12 @@ export const PirateMiniGame: React.FC = () => {
     }, 110);
   }, []);
 
-  // Auto-focus input when game is active
+  // Auto-focus input when native keyboard is explicitly enabled
   useEffect(() => {
-    if (!isGameOver && !isPunching && !isMonsterAttacking) {
+    if (!isGameOver && !isPunching && !isMonsterAttacking && useNativeKeyboard) {
       inputRef.current?.focus();
     }
-  }, [currentQuestion, isGameOver, isPunching, isMonsterAttacking]);
+  }, [currentQuestion, isGameOver, isPunching, isMonsterAttacking, useNativeKeyboard]);
 
   // Generate next question using main filters and reset Cannon Fuse
   const nextQuestion = useCallback(() => {
@@ -180,8 +185,10 @@ export const PirateMiniGame: React.FC = () => {
     setUserInput('');
     setFuseTime(FUSE_MAX_SECONDS);
     setIsFusePaused(false);
-    inputRef.current?.focus();
-  }, [mainDifficulty, mainOperations, language, mainMaxNumber]);
+    if (useNativeKeyboard) {
+      inputRef.current?.focus();
+    }
+  }, [mainDifficulty, mainOperations, language, mainMaxNumber, useNativeKeyboard]);
 
   const playerHpRef = useRef(playerHp);
   playerHpRef.current = playerHp;
@@ -346,7 +353,6 @@ export const PirateMiniGame: React.FC = () => {
       sounds.playPunch();
 
       setIsPunching(true);
-      setHitComicText(language === 'id' ? '💥 KENA!' : '💥 HIT!');
       setIsScreenShaking(true);
 
       setTimeout(() => {
@@ -355,12 +361,15 @@ export const PirateMiniGame: React.FC = () => {
         setIsMonsterHit(true);
 
         const damage = Math.floor(Math.random() * 15) + 35; // 35-50 damage
-        const isCrit = damage >= 45;
+        const isCrit = damage >= 42;
         const newMonsterHp = Math.max(0, monsterHp - damage);
         setMonsterHp(newMonsterHp);
 
-        // Spawn floating damage above Monster
-        spawnFloatingDamage('monster', `-${damage}`, isCrit ? 'text-amber-300' : 'text-rose-400', isCrit);
+        setHitComicText(isCrit ? '💥 DARR! CRITICAL!' : '💥 HIT! KENA!');
+
+        // Spawn floating damage above Monster (CRITICAL! -35 or DARR!)
+        const critLabel = isCrit ? `💥 CRITICAL! -${damage}` : `⚡ -${damage}`;
+        spawnFloatingDamage('monster', critLabel, isCrit ? 'text-amber-300 drop-shadow-[0_0_14px_#f59e0b]' : 'text-orange-400', isCrit);
 
         // Bounty increase
         const bountyGain = 5000000;
@@ -368,7 +377,9 @@ export const PirateMiniGame: React.FC = () => {
 
         setFeedbackMsg({
           type: 'hit',
-          text: language === 'id' ? `Serangan Kena! Monster -${damage} HP` : `Hit! Monster took -${damage} HP`
+          text: language === 'id' 
+            ? `💥 ${isCrit ? 'PUKULAN KRITIKAL! DARR!' : 'Pukulan Kena!'} Monster -${damage} HP` 
+            : `💥 ${isCrit ? 'CRITICAL PUNCH!' : 'Direct Hit!'} Monster took -${damage} HP`
         });
 
         if (newMonsterHp <= 0) {
@@ -394,6 +405,30 @@ export const PirateMiniGame: React.FC = () => {
       );
     }
   };
+
+  const handleAttackRef = useRef(handleAttack);
+  handleAttackRef.current = handleAttack;
+
+  // Global physical keyboard listener (desktop/laptop typing support without opening OS virtual keyboard)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isGameOver || isPunching || isMonsterAttacking || isFusePaused) return;
+
+      if (e.key >= '0' && e.key <= '9') {
+        setUserInput(prev => (prev.length < 7 ? prev + e.key : prev));
+      } else if (e.key === 'Backspace') {
+        setUserInput(prev => prev.slice(0, -1));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAttackRef.current();
+      } else if (e.key === 'Escape' || e.key.toLowerCase() === 'c') {
+        setUserInput('');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isGameOver, isPunching, isMonsterAttacking, isFusePaused]);
 
   // Restart Game
   const handleRestart = () => {
@@ -430,7 +465,7 @@ export const PirateMiniGame: React.FC = () => {
 
   return (
     <div className={`flex-1 flex flex-col h-full overflow-hidden select-none relative ${
-      isScreenShaking ? 'animate-screen-shake' : ''
+      isScreenShaking ? 'animate-screen-shake screen-shake' : ''
     } ${
       isLight 
         ? 'bg-gradient-to-b from-sky-100/50 via-white to-amber-50/60' 
@@ -443,7 +478,7 @@ export const PirateMiniGame: React.FC = () => {
 
       {/* SUB-HEADER / HUD */}
       <div className={`px-3 py-1.5 border-b ${
-        isLight ? 'bg-amber-50/65 border-amber-200/70' : 'bg-slate-950/60 border-slate-800/60'
+        isLight ? 'bg-amber-50/40 border-amber-200/50' : 'bg-slate-950/25 border-slate-800/40'
       } flex items-center justify-between text-xs shrink-0 z-20 backdrop-blur-md`}>
         {/* Bounty */}
         <div className="flex items-center gap-1.5">
@@ -462,9 +497,9 @@ export const PirateMiniGame: React.FC = () => {
 
         {/* Defeated Monsters & Scratchpad */}
         <div className="flex items-center gap-1.5">
-          <div className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold flex items-center gap-1 ${
-            isLight ? 'bg-white/80 border-amber-300 text-amber-900' : 'bg-slate-900/60 border-slate-700 text-amber-300'
-          } backdrop-blur-xs`}>
+          <div className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold flex items-center gap-1 backdrop-blur-md ${
+            isLight ? 'bg-white/50 border-amber-300/60 text-amber-950' : 'bg-slate-900/30 border-slate-700/60 text-amber-300'
+          }`}>
             <Skull className="w-3 h-3 text-amber-500" />
             <span>{monstersDefeated} K.O.</span>
           </div>
@@ -474,9 +509,9 @@ export const PirateMiniGame: React.FC = () => {
               sounds.playTap();
               setShowScratchpad(true);
             }}
-            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
-              isLight ? 'bg-white/80 border-slate-300 text-slate-700' : 'bg-slate-900/60 border-slate-700 text-slate-300'
-            } backdrop-blur-xs`}
+            className={`p-1.5 rounded-lg border transition-colors cursor-pointer backdrop-blur-md ${
+              isLight ? 'bg-white/50 border-slate-300/60 text-slate-700' : 'bg-slate-900/30 border-slate-700/60 text-slate-300'
+            }`}
             title="Coretan Hitung"
           >
             <PenTool className="w-3 h-3 text-amber-500" />
@@ -486,65 +521,25 @@ export const PirateMiniGame: React.FC = () => {
 
       {/* BATTLE STAGE AREA */}
       <div className="flex-1 flex flex-col justify-between overflow-y-auto px-3 py-2 space-y-2 relative">
-        {/* DYNAMIC SKY & DRIFTING CLOUDS (Latar Belakang Dinamis) */}
-        <div className="absolute top-2 inset-x-0 h-16 pointer-events-none overflow-hidden opacity-80 select-none z-0">
-          <div className="flex justify-between items-center px-4 animate-cloud-drift">
-            <span className="text-2xl filter drop-shadow-sm">☁️</span>
-            <span className="text-xl mt-1 opacity-80">☁️</span>
-            <span className="text-2xl opacity-90">☁️</span>
-            <span className="text-lg -mt-2 opacity-75">☁️</span>
-            <span className="text-2xl">☁️</span>
-          </div>
-        </div>
+        {/* FULL STAGE TROPICAL OCEAN & SKY SCENERY BACKGROUND */}
+        <PirateSceneryBg />
 
-        {/* DYNAMIC MOVING OCEAN WAVES AT BOTTOM (2-Layered Waves) */}
-        <div className="absolute bottom-0 inset-x-0 h-24 pointer-events-none overflow-hidden opacity-85 select-none z-0">
-          {/* Back wave layer */}
-          <div className="absolute inset-x-[-50px] bottom-4 flex justify-around text-xl animate-wave-drift-reverse">
-            <span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span>
-          </div>
-          {/* Front wave layer */}
-          <div className="absolute inset-x-[-50px] bottom-0 flex justify-around text-2xl animate-wave-drift">
-            <span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span><span>🌊</span>
-          </div>
-          <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-sky-600/40 to-transparent" />
-        </div>
-
-        {/* BATTLE STAGE: LUFFY vs MONSTER LAUT */}
-        <div className="grid grid-cols-2 gap-2.5 items-center pt-0.5 z-10">
-          {/* LEFT: LUFFY */}
-          <div className={`p-2.5 rounded-2xl border transition-all ${
-            isPlayerHit 
-              ? 'bg-rose-500/25 border-rose-500 animate-shake shadow-lg' 
-              : isLight 
-              ? 'bg-white/45 border-amber-300/40 shadow-sm backdrop-blur-md' 
-              : 'bg-slate-950/40 border-amber-500/30 shadow-lg backdrop-blur-md'
-          } flex flex-col items-center relative overflow-visible`}>
-            
-            {/* Floating Combat Text for Luffy */}
-            {floatingTexts.filter(ft => ft.target === 'player').map(ft => (
-              <div 
-                key={ft.id}
-                className={`absolute -top-3 left-1/2 -translate-x-1/2 font-mono-math font-black text-2xl sm:text-3xl ${ft.color} animate-float-damage pointer-events-none z-40 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]`}
-              >
-                {ft.text}
-              </div>
-            ))}
-
-            {/* Luffy Title & HP */}
-            <div className="w-full mb-1">
+        {/* BATTLE STAGE: LUFFY vs MONSTER LAUT (STANDING DIRECTLY ON SHARED SHIP DECK) */}
+        <div className="w-full flex-1 min-h-[170px] max-h-[220px] sm:max-h-[240px] flex flex-col justify-between relative z-10 px-1 pt-1">
+          {/* Top HUD Bars (Translucent & Minimalist) */}
+          <div className="grid grid-cols-2 gap-3 w-full">
+            {/* Luffy HP Bar */}
+            <div className="p-2 rounded-2xl border bg-slate-950/30 dark:bg-slate-950/40 border-amber-500/30 backdrop-blur-md shadow-md">
               <div className="flex items-center justify-between text-[11px] font-black">
-                <span className="flex items-center gap-1 text-amber-500 truncate">
-                  <span>👒</span>
+                <span className="flex items-center gap-1.5 text-amber-400 truncate">
+                  <LuffyAvatarSvg className="w-4 h-4 shrink-0" />
                   <span className="truncate">Kapten Luffy</span>
                 </span>
-                <span className={`font-mono-math ${playerHp <= 25 ? 'text-rose-500 font-extrabold animate-pulse' : 'text-emerald-500 font-bold'}`}>
+                <span className={`font-mono-math ${playerHp <= 25 ? 'text-rose-500 font-extrabold animate-pulse' : 'text-emerald-400 font-bold'}`}>
                   {playerHp}/{PLAYER_MAX_HP}
                 </span>
               </div>
-
-              {/* Player HP Bar */}
-              <div className="w-full h-2 rounded-full bg-slate-200/80 dark:bg-slate-800/80 overflow-hidden mt-0.5 p-0.5">
+              <div className="w-full h-2 rounded-full bg-slate-950/60 overflow-hidden mt-1 p-0.5 border border-slate-800/40">
                 <div 
                   className={`h-full rounded-full transition-all duration-300 ${
                     playerHp > 50 ? 'bg-gradient-to-r from-emerald-500 to-green-400' : playerHp > 25 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-rose-600 to-red-500'
@@ -554,168 +549,120 @@ export const PirateMiniGame: React.FC = () => {
               </div>
             </div>
 
-            {/* Anime Luffy Graphic */}
-            <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center my-0.5">
-              {isPlayerHit && (
-                <div className="absolute -top-2.5 -right-1 bg-rose-600 text-white font-black text-[9px] px-1.5 py-0.2 rounded-full shadow-md animate-bounce z-20">
-                  Aduh! 💥
-                </div>
-              )}
-
-              <div className={`relative transition-all duration-200 ${
-                isPunching ? 'scale-105 translate-x-3' : isPlayerHit ? 'scale-90 -translate-x-2 rotate-6' : 'animate-sea-bob'
-              }`}>
-                {/* Straw Hat Graphic */}
-                <div className="relative flex flex-col items-center">
-                  <div className="w-14 h-7 bg-amber-400 rounded-t-full border-2 border-amber-600 relative overflow-hidden shadow-xs">
-                    <div className="absolute bottom-0 inset-x-0 h-2 bg-rose-600 border-t border-b border-rose-800" />
-                  </div>
-                  <div className="w-18 h-3 bg-amber-400 rounded-full border-2 border-amber-600 shadow-md -mt-1 z-10" />
-
-                  {/* Head */}
-                  <div className="w-12 h-10 bg-amber-100 rounded-2xl border-2 border-amber-300 -mt-1.5 flex flex-col items-center justify-center relative shadow-xs">
-                    <div className="flex items-center gap-2.5 mt-0.5">
-                      <div className="w-1.5 h-2 bg-slate-900 rounded-full" />
-                      <div className="w-1.5 h-2 bg-slate-900 rounded-full" />
-                    </div>
-                    <div className="absolute top-4 left-2.5 w-1 h-0.5 bg-rose-600 rotate-12" />
-                    <div className="w-4 h-1.5 border-b-2 border-slate-900 rounded-full mt-0.5" />
-                  </div>
-
-                  {/* Vest */}
-                  <div className="w-10 h-8 bg-rose-600 rounded-t-lg border border-rose-700 flex items-center justify-between px-1 -mt-0.5 relative">
-                    <div className="w-2 h-5 bg-amber-100 rounded-full" />
-                    <div className="w-3 h-3 bg-amber-200/40 rounded-full" />
-                    <div className="w-2 h-5 bg-amber-100 rounded-full" />
-                  </div>
-                </div>
-
-                {/* STRETCHING RUBBER PUNCH ANIMATION */}
-                {isPunching && (
-                  <div className="absolute top-10 left-8 w-32 sm:w-40 h-7 flex items-center z-30 animate-punch-stretch pointer-events-none">
-                    <div className="h-3.5 bg-amber-200 border-2 border-amber-500 flex-1 rounded-full shadow-md" />
-                    <div className="text-3xl filter drop-shadow-md -ml-1">
-                      🥊💨
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="text-[9px] font-bold text-amber-600 bg-amber-100/70 dark:bg-amber-950/60 px-2 py-0.2 rounded-full border border-amber-300/50">
-              Topi Jerami ⚔️
-            </div>
-          </div>
-
-          {/* RIGHT: SEA MONSTER */}
-          <div className={`p-2.5 rounded-2xl border transition-all ${
-            isMonsterHit 
-              ? 'bg-rose-500/30 border-rose-500 animate-monster-hit shadow-lg' 
-              : isLight 
-              ? 'bg-white/45 border-sky-300/40 shadow-sm backdrop-blur-md' 
-              : 'bg-slate-950/40 border-sky-500/30 shadow-lg backdrop-blur-md'
-          } flex flex-col items-center relative overflow-visible`}>
-
-            {/* Floating Combat Text for Sea Monster */}
-            {floatingTexts.filter(ft => ft.target === 'monster').map(ft => (
-              <div 
-                key={ft.id}
-                className={`absolute -top-3 left-1/2 -translate-x-1/2 font-mono-math font-black text-2xl sm:text-3xl ${ft.color} animate-float-damage pointer-events-none z-40 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]`}
-              >
-                {ft.text} {ft.isCritical ? '⚡CRIT!' : ''}
-              </div>
-            ))}
-
-            {/* Monster Title & HP */}
-            <div className="w-full mb-1">
+            {/* Monster HP Bar */}
+            <div className="p-2 rounded-2xl border bg-slate-950/30 dark:bg-slate-950/40 border-sky-500/30 backdrop-blur-md shadow-md">
               <div className="flex items-center justify-between text-[11px] font-black">
-                <span className="flex items-center gap-1 text-sky-500 truncate">
-                  <span>🌊</span>
+                <span className="flex items-center gap-1.5 text-sky-400 truncate">
+                  <span className="text-sm">🌊</span>
                   <span className="truncate">{activeMonster.name}</span>
                 </span>
-                <span className={`font-mono-math ${monsterHp <= 30 ? 'text-rose-500 font-extrabold animate-pulse' : 'text-sky-500 font-bold'}`}>
+                <span className={`font-mono-math ${monsterHp <= 35 ? 'text-rose-500 font-extrabold animate-pulse' : 'text-sky-400 font-bold'}`}>
                   {monsterHp}/{activeMonster.maxHp}
                 </span>
               </div>
-
-              {/* Monster HP Bar */}
-              <div className="w-full h-2 rounded-full bg-slate-200/80 dark:bg-slate-800/80 overflow-hidden mt-0.5 p-0.5">
+              <div className="w-full h-2 rounded-full bg-slate-950/60 overflow-hidden mt-1 p-0.5 border border-slate-800/40">
                 <div 
                   className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-sky-500 to-rose-500 transition-all duration-300"
                   style={{ width: `${(monsterHp / activeMonster.maxHp) * 100}%` }}
                 />
               </div>
             </div>
+          </div>
 
-            {/* Monster Sprite */}
-            <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center my-0.5">
-              {hitComicText && isMonsterHit && (
-                <div className="absolute -top-3 inset-x-0 mx-auto text-center font-black text-xs text-yellow-300 bg-rose-600 px-2 py-0.5 rounded-lg border border-yellow-300 shadow-md animate-comic-pop z-30 whitespace-nowrap">
-                  {hitComicText}
+          {/* MAIN ARENA: CHARACTERS FACING EACH OTHER ON SHIP DECK FLOOR */}
+          <div className="relative w-full flex-1 flex items-end justify-between px-2 sm:px-6 pb-2 min-h-[130px]">
+            {/* FLOATING COMBAT TEXTS (Floating Damage Numbers) */}
+            {floatingTexts.map(ft => (
+              <div 
+                key={ft.id}
+                className={`absolute ${ft.target === 'player' ? 'left-8 sm:left-16' : 'right-8 sm:right-16'} -top-2 font-mono-math font-black text-2xl sm:text-3xl ${ft.color} animate-float-damage pointer-events-none z-40 filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]`}
+              >
+                {ft.text} {ft.isCritical ? '⚡CRIT!' : ''}
+              </div>
+            ))}
+
+            {/* Comic Hit Pop Text */}
+            {hitComicText && isMonsterHit && (
+              <div className="absolute top-2 right-12 sm:right-24 font-black text-xs sm:text-sm text-yellow-300 bg-rose-600 px-2.5 py-1 rounded-xl border border-yellow-300 shadow-xl animate-comic-pop z-40 whitespace-nowrap">
+                {hitComicText}
+              </div>
+            )}
+
+            {/* LEFT: KAPTEN LUFFY SVG (Full Body Chibi Anime Standing on Deck) */}
+            <div className={`relative w-32 h-32 sm:w-40 sm:h-40 md:w-44 md:h-44 flex items-end justify-center transition-transform ${
+              isPunching ? 'luffy-menyerang' : isPlayerHit ? 'luffy-terluka' : 'animate-sea-bob'
+            }`}>
+              {/* Hurt Bubble */}
+              {isPlayerHit && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-rose-600 text-white font-black text-[10px] px-2 py-0.5 rounded-full shadow-lg animate-bounce z-30 whitespace-nowrap">
+                  Aduh! 💥
                 </div>
               )}
 
-              <div className={`relative transition-all duration-200 ${
-                isMonsterHit ? 'scale-90 rotate-6 filter brightness-150' : isMonsterAttacking ? 'scale-120 -translate-x-3' : 'animate-sea-bob'
-              }`}>
-                <div className="w-18 h-18 sm:w-22 sm:h-22 rounded-2xl p-0.5 shadow-md flex items-center justify-center overflow-hidden"
-                     style={{
-                       background: activeMonster.avatarType === 'kraken'
-                         ? 'linear-gradient(135deg, #a855f7, #6366f1)'
-                         : activeMonster.avatarType === 'shark'
-                         ? 'linear-gradient(135deg, #06b6d4, #1d4ed8)'
-                         : activeMonster.avatarType === 'crab'
-                         ? 'linear-gradient(135deg, #f97316, #dc2626)'
-                         : activeMonster.avatarType === 'serpent'
-                         ? 'linear-gradient(135deg, #10b981, #0f766e)'
-                         : 'linear-gradient(135deg, #f59e0b, #b45309)'
-                     }}
-                >
-                  <div className={`w-full h-full rounded-[14px] ${
-                    isLight ? 'bg-white/90' : 'bg-slate-950/90'
-                  } flex flex-col items-center justify-center text-4xl select-none`}>
-                    {activeMonster.avatarType === 'kraken' && '🐙'}
-                    {activeMonster.avatarType === 'shark' && '🦈'}
-                    {activeMonster.avatarType === 'crab' && '🦀'}
-                    {activeMonster.avatarType === 'serpent' && '🐉'}
-                    {activeMonster.avatarType === 'neptune' && '👑🌊'}
-                  </div>
-                </div>
-
-                {isMonsterAttacking && (
-                  <div className="absolute top-1/2 right-10 w-24 h-6 text-xl flex items-center justify-end animate-ping z-30">
-                    🌊💥
-                  </div>
-                )}
-              </div>
+              <LuffyCharacterSvg 
+                isPunching={isPunching}
+                isHit={isPlayerHit}
+                className="w-full h-full filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]"
+              />
             </div>
 
-            <div className="text-[9px] font-bold text-sky-600 bg-sky-100/70 dark:bg-sky-950/60 px-2 py-0.2 rounded-full border border-sky-300/50 truncate max-w-[110px]">
-              {activeMonster.title}
+            {/* VS CENTER BADGE */}
+            <div className="self-center flex flex-col items-center justify-center opacity-70 z-20">
+              <span className="font-black text-xs text-amber-400 bg-slate-950/40 px-2 py-0.5 rounded-full border border-amber-400/40 backdrop-blur-xs">
+                ⚔️ VS
+              </span>
+            </div>
+
+            {/* RIGHT: SEA MONSTER SVG (Full Body Chibi Anime Standing on Deck) */}
+            <div className={`relative w-32 h-32 sm:w-40 sm:h-40 md:w-44 md:h-44 flex items-end justify-center transition-transform ${
+              isMonsterHit 
+                ? 'animate-monster-hit' 
+                : isMonsterAttacking 
+                ? 'scale-115 -translate-x-6' 
+                : 'animate-sea-bob'
+            }`}>
+              {/* Monster Attack Water/Claw Blast */}
+              {isMonsterAttacking && (
+                <div className="absolute top-1/2 -left-8 text-2xl flex items-center justify-center animate-ping z-30 pointer-events-none">
+                  🌊💥
+                </div>
+              )}
+
+              <PirateMonsterSvg
+                monsterType={activeMonster.avatarType}
+                isAttacking={isMonsterAttacking}
+                isHit={isMonsterHit}
+                className="w-full h-full filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.5)]"
+              />
             </div>
           </div>
         </div>
 
         {/* FEEDBACK BANNER */}
         {feedbackMsg && (
-          <div className={`p-1.5 rounded-xl text-center font-black text-xs border animate-in zoom-in-95 z-20 ${
+          <div className={`p-1.5 rounded-xl text-center font-black text-xs border animate-in zoom-in-95 z-20 backdrop-blur-md ${
             feedbackMsg.type === 'hit'
-              ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-xs'
-              : 'bg-rose-500 text-white border-rose-400 shadow-xs'
+              ? 'bg-emerald-500/90 text-slate-950 border-emerald-400 shadow-xs'
+              : 'bg-rose-500/90 text-white border-rose-400 shadow-xs'
           }`}>
             {feedbackMsg.text}
           </div>
         )}
 
-        {/* THE MATH PROBLEM CARD (TRANSLUCENT & RESPONSIVE) */}
-        <div className={`p-3 sm:p-4 rounded-3xl border-2 ${
-          isLight
-            ? 'bg-white/50 border-amber-300/60 shadow-md'
-            : 'bg-slate-950/45 border-amber-400/40 shadow-[0_4px_25px_rgba(245,158,11,0.15)]'
-        } flex flex-col items-center justify-center space-y-2 z-10 backdrop-blur-md w-full max-w-sm mx-auto`}>
+        {/* THE MATH PROBLEM CARD (PURE GLASSMORPHISM WITH ORANGE NEON GLOW) */}
+        <div 
+          className="p-3 sm:p-4 rounded-3xl flex flex-col items-center justify-center space-y-2 z-10 w-full max-w-sm mx-auto"
+          style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 0 25px rgba(245, 158, 11, 0.35), inset 0 0 15px rgba(245, 158, 11, 0.15)'
+          }}
+        >
           <div className="flex items-center justify-center gap-2">
-            <span className="text-[10px] uppercase font-bold text-slate-400">Soal Hitung:</span>
-            <div className="font-mono-math font-black text-2xl sm:text-3xl text-amber-500 tracking-wider">
+            <span className="text-[10px] uppercase font-bold text-amber-200/90">Soal Hitung:</span>
+            <div className="font-mono-math font-black text-2xl sm:text-3xl text-amber-400 tracking-wider drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]">
               {currentQuestion.questionText.includes('= ?') ? currentQuestion.questionText : `${currentQuestion.questionText} = ?`}
             </div>
           </div>
@@ -723,21 +670,21 @@ export const PirateMiniGame: React.FC = () => {
           {/* WAKTU KETEGANGAN: VISUAL TIMER "SUMBU MERIAM" (CANNON FUSE) */}
           <div className="w-full space-y-1">
             <div className="flex items-center justify-between text-[10px] font-bold px-0.5">
-              <span className="flex items-center gap-1 text-amber-500">
-                <Flame className="w-3.5 h-3.5 text-orange-500 animate-fuse-spark" />
+              <span className="flex items-center gap-1 text-amber-300 drop-shadow-[0_0_6px_#f59e0b]">
+                <Flame className="w-3.5 h-3.5 text-orange-400 animate-fuse-spark" />
                 <span>{language === 'id' ? 'Sumbu Meriam' : 'Cannon Fuse'}</span>
               </span>
-              <span className={`font-mono-math ${fuseTime <= 5 ? 'text-rose-500 font-black animate-pulse' : 'text-amber-500'}`}>
+              <span className={`font-mono-math ${fuseTime <= 5 ? 'text-rose-400 font-black animate-pulse' : 'text-amber-300'}`}>
                 {fuseTime.toFixed(1)}s
               </span>
             </div>
 
             {/* Fuse Bar */}
-            <div className="relative w-full h-3 rounded-full bg-slate-800/80 p-0.5 border border-amber-900/50 overflow-visible">
+            <div className="relative w-full h-3 rounded-full bg-slate-950/70 p-0.5 border border-amber-500/40 overflow-visible shadow-[0_0_10px_rgba(245,158,11,0.2)]">
               <div 
                 className={`h-full rounded-full transition-all duration-100 ${
                   fuseTime > 10
-                    ? 'bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500'
+                    ? 'bg-gradient-to-r from-amber-600 via-amber-500 to-orange-400'
                     : fuseTime > 5
                     ? 'bg-gradient-to-r from-orange-600 via-orange-500 to-rose-500'
                     : 'bg-gradient-to-r from-rose-700 via-rose-600 to-red-500 animate-pulse'
@@ -757,7 +704,7 @@ export const PirateMiniGame: React.FC = () => {
             </div>
           </div>
 
-          {/* Form with Autofocus input and Serang! button (NEVER CUT OFF ON MOBILE) */}
+          {/* Form with input and Serang! button */}
           <form 
             onSubmit={(e) => {
               e.preventDefault();
@@ -768,24 +715,54 @@ export const PirateMiniGame: React.FC = () => {
             <input
               ref={inputRef}
               type="number"
-              inputMode="numeric"
+              inputMode={useNativeKeyboard ? 'numeric' : 'none'}
+              readOnly={!useNativeKeyboard}
               pattern="[0-9]*"
-              autoFocus
               value={userInput}
               onChange={e => setUserInput(e.target.value)}
               placeholder="Jawaban..."
               disabled={isGameOver || isPunching || isMonsterAttacking || isFusePaused}
-              className={`flex-1 min-w-0 px-3 py-2 text-center font-mono-math font-black text-lg sm:text-xl rounded-2xl border-2 transition-all outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                isLight 
-                  ? 'bg-amber-50/70 border-amber-400 text-slate-900 focus:ring-2 focus:ring-amber-400' 
-                  : 'bg-slate-950/60 border-amber-400/80 text-white focus:ring-2 focus:ring-amber-400'
-              }`}
+              onClick={() => {
+                if (!useNativeKeyboard) {
+                  inputRef.current?.blur();
+                }
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.12)',
+                border: '1.5px solid rgba(245, 158, 11, 0.6)',
+                boxShadow: '0 0 15px rgba(245, 158, 11, 0.25)'
+              }}
+              className="flex-1 min-w-0 px-3 py-2 text-center font-mono-math font-black text-lg sm:text-xl rounded-2xl text-amber-200 focus:ring-2 focus:ring-amber-400 transition-all outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-default backdrop-blur-md"
             />
+
+            {/* Keyboard HP Toggle Button */}
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                const nextVal = !useNativeKeyboard;
+                setUseNativeKeyboard(nextVal);
+                if (nextVal) {
+                  setTimeout(() => inputRef.current?.focus(), 100);
+                } else {
+                  inputRef.current?.blur();
+                }
+              }}
+              style={{
+                background: useNativeKeyboard ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                boxShadow: '0 0 10px rgba(245, 158, 11, 0.2)'
+              }}
+              className="shrink-0 p-2.5 rounded-2xl flex items-center justify-center gap-1 font-bold text-xs text-amber-300 transition-all cursor-pointer backdrop-blur-md"
+              title={useNativeKeyboard ? 'Sembunyikan Keyboard HP' : 'Tampilkan Keyboard HP'}
+            >
+              <Keyboard className="w-4 h-4 shrink-0" />
+            </button>
 
             <button
               type="submit"
               disabled={isGameOver || isPunching || isMonsterAttacking || isFusePaused}
-              className="shrink-0 px-3.5 sm:px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-md flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform whitespace-nowrap"
+              className="shrink-0 px-3.5 sm:px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-[0_0_20px_rgba(245,158,11,0.5)] flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform whitespace-nowrap"
             >
               <Swords className="w-4 h-4 shrink-0" />
               <span>{t.attackBtnText || 'Serang!'}</span>
@@ -793,7 +770,7 @@ export const PirateMiniGame: React.FC = () => {
           </form>
         </div>
 
-        {/* ON-SCREEN NUMPAD (TRANSLUCENT) */}
+        {/* ON-SCREEN NUMPAD (PURE GLASSMORPHISM WITH ORANGE NEON ACCENTS) */}
         {showTouchKeypad && (
           <div className="w-full max-w-xs mx-auto pt-0.5 pb-0.5 z-10">
             <div className="grid grid-cols-4 gap-1.5">
@@ -802,14 +779,19 @@ export const PirateMiniGame: React.FC = () => {
                   key={key}
                   type="button"
                   onClick={() => handleKeypadPress(key)}
-                  className={`py-2 rounded-xl font-mono-math font-bold text-sm sm:text-base border transition-all cursor-pointer active:scale-90 ${
+                  style={{
+                    background: key === 'C' ? 'rgba(244, 63, 94, 0.25)' : key === 'DEL' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    boxShadow: key === 'C' ? '0 0 12px rgba(244, 63, 94, 0.3)' : '0 0 10px rgba(245, 158, 11, 0.18)'
+                  }}
+                  className={`py-2 rounded-xl font-mono-math font-bold text-sm sm:text-base transition-all cursor-pointer active:scale-90 ${
                     key === 'C'
-                      ? 'bg-rose-100/80 dark:bg-rose-950/60 border-rose-300 dark:border-rose-500/70 text-rose-800 dark:text-rose-300'
+                      ? 'text-rose-200'
                       : key === 'DEL'
-                      ? 'bg-amber-100/80 dark:bg-amber-950/60 border-amber-300 dark:border-amber-500/70 text-amber-900 dark:text-amber-300'
-                      : isLight
-                      ? 'bg-white/45 hover:bg-white/75 border-slate-200/60 text-slate-800 shadow-2xs backdrop-blur-xs'
-                      : 'bg-slate-950/45 hover:bg-slate-900/65 border-slate-800/60 text-slate-100 shadow-2xs backdrop-blur-xs'
+                      ? 'text-amber-200'
+                      : 'text-amber-100 hover:text-white'
                   }`}
                 >
                   {key === 'DEL' ? '⌫' : key}

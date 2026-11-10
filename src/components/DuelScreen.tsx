@@ -39,10 +39,10 @@ export const DuelScreen: React.FC = () => {
     }`}>
       {/* MODE SELECTOR HEADER (KERETA IBLIS vs BAJAK LAUT vs DUEL AI) */}
       <div className={`px-3 py-2 border-b ${
-        isLight ? 'bg-white/95 border-amber-200' : 'bg-slate-900/95 border-slate-800'
-      } flex flex-col gap-1.5 shrink-0 z-30 shadow-xs`}>
+        isLight ? 'bg-white/60 border-amber-200/50' : 'bg-slate-950/40 border-slate-800/40'
+      } flex flex-col gap-1.5 shrink-0 z-30 shadow-xs backdrop-blur-md`}>
         {/* Top Switcher 3 Buttons */}
-        <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-200/50 dark:bg-slate-950/50 border border-slate-200/60 dark:border-slate-800/50 backdrop-blur-md">
           <button
             onClick={() => {
               sounds.playTap();

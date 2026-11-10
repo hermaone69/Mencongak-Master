@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   Heart, Shield, Sparkles, Swords, RefreshCw, Zap, Trophy,
-  SlidersHorizontal, CheckCircle2, XCircle, PenTool, Skull, ArrowRight, Flame, Gauge, Wind
+  SlidersHorizontal, CheckCircle2, XCircle, PenTool, Skull, ArrowRight, Flame, Gauge, Wind, Keyboard
 } from 'lucide-react';
 import { DifficultyLevel, MathOperation, Question } from '../types';
 import { generateQuestion, getLevelMaxConfig } from '../utils/mathGenerator';
@@ -12,6 +12,8 @@ import { getTranslation } from '../utils/translations';
 import { ScratchpadCanvas } from './ScratchpadCanvas';
 import { DemonCharacterSvg } from './DemonCharacterSvg';
 import { SlayerCharacterSvg, SlayerAvatarSvg } from './SlayerCharacterSvg';
+import { DemonTrainSceneryBg } from './DemonTrainSceneryBg';
+
 
 interface TrainDemon {
   id: string;
@@ -130,6 +132,7 @@ export const DemonTrainMiniGame: React.FC = () => {
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'hit' | 'miss'; text: string } | null>(null);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [showTouchKeypad, setShowTouchKeypad] = useState<boolean>(true);
+  const [useNativeKeyboard, setUseNativeKeyboard] = useState<boolean>(false);
 
   // Floating Combat Texts (Teks Damage Melayang)
   const [floatingTexts, setFloatingTexts] = useState<FloatingCombatText[]>([]);
@@ -156,12 +159,12 @@ export const DemonTrainMiniGame: React.FC = () => {
     }, 850);
   }, []);
 
-  // Auto-focus input when game is active
+  // Auto-focus input when native keyboard is explicitly enabled
   useEffect(() => {
-    if (!isGameOver && !isSlashing && !isDemonAttacking) {
+    if (!isGameOver && !isSlashing && !isDemonAttacking && useNativeKeyboard) {
       inputRef.current?.focus();
     }
-  }, [currentQuestion, isGameOver, isSlashing, isDemonAttacking]);
+  }, [currentQuestion, isGameOver, isSlashing, isDemonAttacking, useNativeKeyboard]);
 
   // Generate next question using main filters and restore Steam Pressure
   const nextQuestion = useCallback(() => {
@@ -170,8 +173,10 @@ export const DemonTrainMiniGame: React.FC = () => {
     setUserInput('');
     setSteamPressure(STEAM_MAX_SECONDS);
     setIsTimerPaused(false);
-    inputRef.current?.focus();
-  }, [mainDifficulty, mainOperations, language, mainMaxNumber]);
+    if (useNativeKeyboard) {
+      inputRef.current?.focus();
+    }
+  }, [mainDifficulty, mainOperations, language, mainMaxNumber, useNativeKeyboard]);
 
   // Demon counter-attacks Slayer (on wrong answer or timeout)
   const handleDemonCounterAttack = useCallback((reason: string, customDamage?: number) => {
@@ -350,12 +355,13 @@ export const DemonTrainMiniGame: React.FC = () => {
         setIsDemonHit(true);
 
         const damage = Math.floor(Math.random() * 15) + 35; // 35-50 damage
-        const isCrit = damage >= 45;
+        const isCrit = damage >= 42;
         const newDemonHp = Math.max(0, demonHp - damage);
         setDemonHp(newDemonHp);
 
-        // Spawn floating damage above Demon
-        spawnFloatingDamage('enemy', `-${damage}`, isCrit ? 'text-amber-300' : 'text-rose-400', isCrit);
+        // Spawn bombastic floating damage above Demon (CRITICAL! -35 or DARR!)
+        const critLabel = isCrit ? `💥 CRITICAL! -${damage}` : `⚡ -${damage}`;
+        spawnFloatingDamage('enemy', critLabel, isCrit ? 'text-amber-300 drop-shadow-[0_0_12px_#f59e0b]' : 'text-cyan-300', isCrit);
 
         // Score gain
         const scoreGain = 10000;
@@ -364,8 +370,8 @@ export const DemonTrainMiniGame: React.FC = () => {
         setFeedbackMsg({
           type: 'hit',
           text: language === 'id' 
-            ? `⚔️ Tebasan Telak! Iblis -${damage} HP` 
-            : `⚔️ Critical Slash! Demon took -${damage} HP`
+            ? `⚔️ ${isCrit ? 'TEBASAN KRITIKAL! DARR!' : 'Tebasan Telak!'} Iblis -${damage} HP` 
+            : `⚔️ ${isCrit ? 'CRITICAL SLASH!' : 'Direct Hit!'} Demon took -${damage} HP`
         });
 
         if (newDemonHp <= 0) {
@@ -390,6 +396,30 @@ export const DemonTrainMiniGame: React.FC = () => {
       );
     }
   };
+
+  const handleAttackRef = useRef(handleAttack);
+  handleAttackRef.current = handleAttack;
+
+  // Global physical keyboard listener (desktop/laptop typing support without opening OS virtual keyboard)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isGameOver || isSlashing || isDemonAttacking || isTimerPaused) return;
+
+      if (e.key >= '0' && e.key <= '9') {
+        setUserInput(prev => (prev.length < 7 ? prev + e.key : prev));
+      } else if (e.key === 'Backspace') {
+        setUserInput(prev => prev.slice(0, -1));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAttackRef.current();
+      } else if (e.key === 'Escape' || e.key.toLowerCase() === 'c') {
+        setUserInput('');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isGameOver, isSlashing, isDemonAttacking, isTimerPaused]);
 
   // Restart Game
   const handleRestart = () => {
@@ -423,7 +453,7 @@ export const DemonTrainMiniGame: React.FC = () => {
 
   return (
     <div className={`flex-1 flex flex-col h-full overflow-hidden select-none relative ${
-      isScreenShaking ? 'animate-screen-shake' : ''
+      isScreenShaking ? 'animate-screen-shake screen-shake' : ''
     } bg-gradient-to-b from-[#030712] via-[#091124] to-[#040915] text-slate-100`}>
 
       {/* RED SCREEN FLASH ON DAMAGE / WRONG ANSWER */}
@@ -432,10 +462,10 @@ export const DemonTrainMiniGame: React.FC = () => {
       )}
 
       {/* SUB-HEADER / HUD */}
-      <div className="px-3 py-1.5 border-b border-indigo-950/60 bg-slate-950/60 flex items-center justify-between text-xs shrink-0 z-20 backdrop-blur-md">
+      <div className="px-3 py-1.5 border-b border-indigo-900/30 bg-slate-950/25 flex items-center justify-between text-xs shrink-0 z-20 backdrop-blur-md">
         {/* Wave & Slayer Score */}
         <div className="flex items-center gap-2">
-          <div className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black text-xs flex items-center gap-1 backdrop-blur-xs">
+          <div className="px-2 py-0.5 rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-black text-xs flex items-center gap-1 backdrop-blur-md">
             <span>🚂</span>
             <span>WAVE {currentWave}</span>
           </div>
@@ -451,7 +481,7 @@ export const DemonTrainMiniGame: React.FC = () => {
 
         {/* Slain Demons & Scratchpad */}
         <div className="flex items-center gap-1.5">
-          <div className="px-2 py-0.5 rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 text-[10px] font-bold flex items-center gap-1 backdrop-blur-xs">
+          <div className="px-2 py-0.5 rounded-lg border border-rose-500/30 bg-rose-950/25 text-rose-300 text-[10px] font-bold flex items-center gap-1 backdrop-blur-md">
             <Skull className="w-3 h-3 text-rose-400" />
             <span>{demonsDefeated} Iblis K.O.</span>
           </div>
@@ -461,7 +491,7 @@ export const DemonTrainMiniGame: React.FC = () => {
               sounds.playTap();
               setShowScratchpad(true);
             }}
-            className="p-1.5 rounded-lg border border-slate-700/80 bg-slate-900/60 text-slate-300 hover:text-white transition-colors cursor-pointer backdrop-blur-xs"
+            className="p-1.5 rounded-lg border border-slate-700/50 bg-slate-900/30 text-slate-300 hover:text-white transition-colors cursor-pointer backdrop-blur-md"
             title="Coretan Hitung"
           >
             <PenTool className="w-3 h-3 text-amber-500" />
@@ -472,220 +502,183 @@ export const DemonTrainMiniGame: React.FC = () => {
       {/* BATTLE STAGE AREA WITH PARALLAX STEAM TRAIN ROOF */}
       <div className="flex-1 flex flex-col justify-between overflow-y-auto px-3 py-2 space-y-2 relative">
         
-        {/* PARALLAX LAYER 1 (FAR): NIGHT SKY, GLOWING MOON & DRIFTING CLOUDS */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          {/* Glowing Moon */}
-          <div className="absolute top-2 right-8 w-12 h-12 rounded-full bg-amber-100 shadow-[0_0_40px_rgba(254,240,138,0.7)] flex items-center justify-center text-xl select-none opacity-95">
-            🌕
-          </div>
+        {/* PARALLAX NIGHT SKY, MOON, MOUNTAINS, PINE FOREST & MUGEN EXPRESS TRAIN ROOF BACKGROUND */}
+        <DemonTrainSceneryBg />
 
-          {/* Distant mountain silhouette drifting */}
-          <div className="absolute top-8 inset-x-[-100%] h-16 opacity-70 flex items-end justify-around text-2xl animate-parallax-far select-none">
-            <span>⛰️</span><span>☁️</span><span>⛰️</span><span>☁️</span><span>⛰️</span><span>☁️</span><span>⛰️</span><span>☁️</span>
-          </div>
-
-          {/* PARALLAX LAYER 2 (MID): PINE TREES SPEED BLUR */}
-          <div className="absolute top-18 inset-x-[-100%] h-12 opacity-65 flex items-end justify-around text-xl animate-parallax-mid select-none">
-            <span>🌲</span><span>🌲</span><span>🌲</span><span>🌲</span><span>🌲</span><span>🌲</span><span>🌲</span><span>🌲</span><span>🌲</span><span>🌲</span>
-          </div>
-
-          {/* PARALLAX LAYER 3 (NEAR): TELEGRAPH POLES & SPEED TRACKS */}
-          <div className="absolute top-26 inset-x-[-100%] h-8 opacity-80 flex items-center justify-around text-base animate-parallax-near select-none font-mono text-cyan-400">
-            <span>━━━</span><span>⚡</span><span>━━━</span><span>⚡</span><span>━━━</span><span>⚡</span><span>━━━</span><span>⚡</span>
-          </div>
-
-          {/* STEAM TRAIN ROOF PLATFORM (ATAP GERBONG) */}
-          <div className={`absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-slate-900/85 via-slate-800/70 to-slate-700/60 border-t-2 border-cyan-500/40 shadow-2xl flex flex-col justify-between p-1 backdrop-blur-xs animate-train-chug ${
-            isCarriageDetaching ? 'animate-carriage-detach' : ''
-          }`}>
-            {/* Rivets & Metal Railing Texture */}
-            <div className="flex justify-between px-2 text-[9px] text-cyan-300 font-mono">
-              <span>🔩 ═ ═ ═ ═ ═ 🔩</span>
-              <span>🚂 GERBONG MUGEN EXPRESS 🚂</span>
-              <span>🔩 ═ ═ ═ ═ ═ 🔩</span>
-            </div>
-
-            {/* Chimney Steam Smoke Puffs */}
-            <div className="absolute -top-6 left-6 text-2xl animate-steam-trail select-none opacity-90 pointer-events-none">
-              💨
-            </div>
-            <div className="absolute -top-8 left-16 text-3xl animate-steam-trail select-none opacity-70 pointer-events-none" style={{ animationDelay: '0.6s' }}>
-              💨
-            </div>
-          </div>
-        </div>
-
-        {/* COMBAT CHARACTERS (PENDEKAR PEDANG vs IBLIS KERETA) */}
-        <div className="grid grid-cols-2 gap-2.5 items-center pt-0.5 z-10">
-          {/* LEFT: DEMON SLAYER (PENDEKAR PEDANG) */}
-          <div className={`p-2.5 rounded-2xl border transition-all ${
-            isPlayerHit 
-              ? 'bg-rose-500/30 border-rose-500 animate-shake shadow-lg' 
-              : 'bg-slate-950/40 border-emerald-500/40 shadow-lg'
-          } flex flex-col items-center relative overflow-visible backdrop-blur-md`}>
-
-            {/* Floating Combat Text for Player */}
-            {floatingTexts.filter(ft => ft.target === 'player').map(ft => (
-              <div 
-                key={ft.id}
-                className={`absolute -top-3 left-1/2 -translate-x-1/2 font-mono-math font-black text-2xl sm:text-3xl ${ft.color} animate-float-damage pointer-events-none z-40 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]`}
-              >
-                {ft.text}
-              </div>
-            ))}
-
-            {/* Player Title & HP */}
-            <div className="w-full mb-1">
+        {/* COMBAT CHARACTERS (PENDEKAR PEDANG vs IBLIS KERETA - STANDING FREELY ON CARRIAGE ROOF) */}
+        <div className="w-full flex-1 min-h-[170px] max-h-[220px] sm:max-h-[240px] flex flex-col justify-between relative z-10 px-1 pt-1">
+          {/* Top HUD Bars (Pure Glassmorphic) */}
+          <div className="grid grid-cols-2 gap-3 w-full">
+            {/* Player HP Bar */}
+            <div 
+              className="p-2 rounded-2xl border" 
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 0 15px rgba(6, 182, 212, 0.25)'
+              }}
+            >
               <div className="flex items-center justify-between text-[11px] font-black">
-                <span className="flex items-center gap-1.5 text-emerald-400 truncate">
+                <span className="flex items-center gap-1.5 text-cyan-300 truncate">
                   <SlayerAvatarSvg className="w-4 h-4 shrink-0 shadow-xs" />
                   <span className="truncate">Pejuang (Pendekar)</span>
                 </span>
-                <span className={`font-mono-math ${playerHp <= 25 ? 'text-rose-500 font-extrabold animate-pulse' : 'text-emerald-400 font-bold'}`}>
+                <span className={`font-mono-math ${playerHp <= 25 ? 'text-rose-500 font-extrabold animate-pulse' : 'text-cyan-300 font-bold'}`}>
                   {playerHp}/{PLAYER_MAX_HP}
                 </span>
               </div>
-
-              {/* Player HP Bar */}
-              <div className="w-full h-2 rounded-full bg-slate-800/80 overflow-hidden mt-0.5 p-0.5">
+              <div className="w-full h-2 rounded-full bg-slate-950/60 overflow-hidden mt-1 p-0.5 border border-slate-800/50">
                 <div 
                   className={`h-full rounded-full transition-all duration-300 ${
-                    playerHp > 50 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : playerHp > 25 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-rose-600 to-red-500'
+                    playerHp > 50 ? 'bg-gradient-to-r from-cyan-400 to-emerald-400' : playerHp > 25 ? 'bg-gradient-to-r from-amber-400 to-yellow-400' : 'bg-gradient-to-r from-rose-600 to-red-500'
                   }`}
                   style={{ width: `${(playerHp / PLAYER_MAX_HP) * 100}%` }}
                 />
               </div>
             </div>
 
-            {/* Anime Demon Slayer Sprite Graphic (Standing Chibi Swordsman) */}
-            <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center my-0.5 overflow-visible">
-              {isPlayerHit && (
-                <div className="absolute -top-2.5 -right-1 bg-rose-600 text-white font-black text-[9px] px-1.5 py-0.2 rounded-full shadow-md animate-bounce z-20">
-                  Kena! 💥
-                </div>
-              )}
-
-              <div className={`w-full h-full relative transition-transform ${
-                isSlashing ? 'pejuang-menyerang' : isPlayerHit ? 'pejuang-terluka' : 'animate-train-chug'
-              }`}>
-                <SlayerCharacterSvg
-                  isSlashing={isSlashing}
-                  isHit={isPlayerHit}
-                  slashElementType={slashElementType}
-                />
-
-                {/* ANIMATED ELEMENTAL SWORD SLASH ARC (Pernafasan Air / Api) */}
-                {isSlashing && (
-                  <div className="absolute -top-4 left-6 w-36 h-24 flex items-center z-30 animate-sword-slash pointer-events-none select-none">
-                    {slashElementType === 'water' ? (
-                      <div className="relative text-3xl filter drop-shadow-[0_0_15px_#06b6d4]">
-                        🌊⚔️✨
-                        <div className="w-28 h-4 rounded-full bg-gradient-to-r from-cyan-400 via-sky-300 to-transparent blur-[1px] -mt-2" />
-                      </div>
-                    ) : (
-                      <div className="relative text-3xl filter drop-shadow-[0_0_15px_#f43f5e]">
-                        🔥⚔️💥
-                        <div className="w-28 h-4 rounded-full bg-gradient-to-r from-rose-500 via-amber-400 to-transparent blur-[1px] -mt-2" />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="text-[9px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.2 rounded-full border border-emerald-500/40">
-              Pernafasan Pedang 🗡️
-            </div>
-          </div>
-
-          {/* RIGHT: TRAIN DEMON (IBLIS KERETA) */}
-          <div className={`p-2.5 rounded-2xl border transition-all ${
-            isDemonHit 
-              ? 'bg-rose-500/30 border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.4)]' 
-              : 'bg-slate-950/40 border-rose-500/40 shadow-lg'
-          } flex flex-col items-center relative overflow-visible backdrop-blur-md`}>
-
-            {/* Floating Combat Text for Demon */}
-            {floatingTexts.filter(ft => ft.target === 'enemy').map(ft => (
-              <div 
-                key={ft.id}
-                className={`absolute -top-3 left-1/2 -translate-x-1/2 font-mono-math font-black text-2xl sm:text-3xl ${ft.color} animate-float-damage pointer-events-none z-40 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]`}
-              >
-                {ft.text} {ft.isCritical ? '⚡CRIT!' : ''}
-              </div>
-            ))}
-
-            {/* Demon Title & HP */}
-            <div className="w-full mb-1">
+            {/* Demon HP Bar */}
+            <div 
+              className="p-2 rounded-2xl border" 
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 0 15px rgba(244, 63, 94, 0.25)'
+              }}
+            >
               <div className="flex items-center justify-between text-[11px] font-black">
-                <span className="flex items-center gap-1 text-rose-400 truncate">
-                  <span>👹</span>
+                <span className="flex items-center gap-1.5 text-rose-400 truncate">
+                  <span className="text-sm">👹</span>
                   <span className="truncate">{activeDemon.name}</span>
                 </span>
                 <span className={`font-mono-math ${demonHp <= 30 ? 'text-rose-500 font-extrabold animate-pulse' : 'text-rose-400 font-bold'}`}>
                   {demonHp}/{activeDemon.maxHp}
                 </span>
               </div>
-
-              {/* Demon HP Bar */}
-              <div className="w-full h-2 rounded-full bg-slate-800/80 overflow-hidden mt-0.5 p-0.5">
+              <div className="w-full h-2 rounded-full bg-slate-950/60 overflow-hidden mt-1 p-0.5 border border-slate-800/50">
                 <div 
                   className="h-full rounded-full bg-gradient-to-r from-rose-600 via-orange-500 to-amber-400 transition-all duration-300"
                   style={{ width: `${(demonHp / activeDemon.maxHp) * 100}%` }}
                 />
               </div>
             </div>
+          </div>
 
-            {/* Demon Character SVG & Standing Battle Pose */}
-            <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center my-0.5 overflow-visible">
+          {/* MAIN ARENA: CHARACTERS STANDING DIRECTLY ON CARRIAGE ROOF (NO BOXES) */}
+          <div className="relative w-full flex-1 flex items-end justify-between px-2 sm:px-6 pb-2 min-h-[130px]">
+            {/* Floating Combat Texts */}
+            {floatingTexts.map(ft => (
               <div 
-                className={`w-full h-full relative transition-transform aura-iblis ${
-                  isCarriageDetaching 
-                    ? 'iblis-kalah' 
-                    : isDemonAttacking 
-                    ? 'iblis-serang' 
-                    : isDemonHit 
-                    ? 'iblis-terkena-hit' 
-                    : 'animate-train-chug'
-                }`}
+                key={ft.id}
+                className={`absolute ${ft.target === 'player' ? 'left-8 sm:left-16' : 'right-8 sm:right-16'} -top-2 font-mono-math font-black text-2xl sm:text-3xl ${ft.color} animate-float-damage pointer-events-none z-40 filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]`}
               >
-                <DemonCharacterSvg 
-                  avatarType={activeDemon.avatarType}
-                  isAttacking={isDemonAttacking}
-                  isHit={isDemonHit}
-                />
-
-                {/* Demon Blood Attack VFX Slash */}
-                {isDemonAttacking && (
-                  <div className="absolute top-1/2 -left-4 -translate-y-1/2 w-16 h-8 text-2xl flex items-center justify-center animate-ping z-30 pointer-events-none select-none">
-                    🩸⚡
-                  </div>
-                )}
+                {ft.text}
               </div>
+            ))}
+
+            {/* LEFT: DEMON SLAYER (Standing Freely on Carriage Roof) */}
+            <div className={`relative w-32 h-32 sm:w-40 sm:h-40 md:w-44 md:h-44 flex items-end justify-center transition-transform ${
+              isSlashing ? 'pejuang-menyerang' : isPlayerHit ? 'pejuang-terluka' : 'animate-train-chug'
+            }`}>
+              {/* Hurt Bubble */}
+              {isPlayerHit && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-rose-600 text-white font-black text-[10px] px-2 py-0.5 rounded-full shadow-lg animate-bounce z-30 whitespace-nowrap">
+                  Kena! 💥
+                </div>
+              )}
+
+              <SlayerCharacterSvg
+                isSlashing={isSlashing}
+                isHit={isPlayerHit}
+                slashElementType={slashElementType}
+                className="w-full h-full filter drop-shadow-[0_4px_14px_rgba(0,0,0,0.5)]"
+              />
+
+              {/* ANIMATED ELEMENTAL SWORD SLASH ARC (Pernafasan Air / Api) */}
+              {isSlashing && (
+                <div className="absolute -top-4 left-10 w-44 h-28 flex items-center z-30 animate-sword-slash pointer-events-none select-none">
+                  {slashElementType === 'water' ? (
+                    <div className="relative text-3xl filter drop-shadow-[0_0_20px_#06b6d4]">
+                      🌊⚔️✨
+                      <div className="w-32 h-5 rounded-full bg-gradient-to-r from-cyan-400 via-sky-300 to-transparent blur-[1px] -mt-2" />
+                    </div>
+                  ) : (
+                    <div className="relative text-3xl filter drop-shadow-[0_0_20px_#f43f5e]">
+                      🔥⚔️💥
+                      <div className="w-32 h-5 rounded-full bg-gradient-to-r from-rose-500 via-amber-400 to-transparent blur-[1px] -mt-2" />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="text-[9px] font-bold text-rose-400 bg-rose-950/60 px-2 py-0.2 rounded-full border border-rose-500/40 truncate max-w-[110px]">
-              {activeDemon.title}
+            {/* VS CENTER BADGE */}
+            <div className="self-center flex flex-col items-center justify-center opacity-70 z-20">
+              <span 
+                className="font-black text-xs text-cyan-300 px-2.5 py-0.5 rounded-full border border-cyan-400/40 backdrop-blur-md"
+                style={{ background: 'rgba(255, 255, 255, 0.08)', boxShadow: '0 0 10px rgba(6,182,212,0.3)' }}
+              >
+                ⚔️ VS
+              </span>
+            </div>
+
+            {/* RIGHT: TRAIN DEMON (Standing Freely on Carriage Roof) */}
+            <div 
+              className={`relative w-32 h-32 sm:w-40 sm:h-40 md:w-44 md:h-44 flex items-end justify-center transition-transform aura-iblis ${
+                isCarriageDetaching 
+                  ? 'iblis-kalah' 
+                  : isDemonAttacking 
+                  ? 'iblis-serang' 
+                  : isDemonHit 
+                  ? 'iblis-terkena-hit' 
+                  : 'animate-train-chug'
+              }`}
+            >
+              {isDemonAttacking && (
+                <div className="absolute top-1/2 -left-8 text-2xl flex items-center justify-center animate-ping z-30 pointer-events-none">
+                  ⚡💥
+                </div>
+              )}
+
+              <DemonCharacterSvg 
+                avatarType={activeDemon.avatarType}
+                isAttacking={isDemonAttacking}
+                isHit={isDemonHit}
+                className="w-full h-full filter drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)]"
+              />
             </div>
           </div>
         </div>
 
         {/* FEEDBACK BANNER */}
         {feedbackMsg && (
-          <div className={`p-1.5 rounded-xl text-center font-black text-xs border animate-in zoom-in-95 z-20 ${
+          <div className={`p-1.5 rounded-xl text-center font-black text-xs border animate-in zoom-in-95 z-20 backdrop-blur-md ${
             feedbackMsg.type === 'hit'
-              ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-xs'
-              : 'bg-rose-500 text-white border-rose-400 shadow-xs'
+              ? 'bg-emerald-500/90 text-slate-950 border-emerald-400 shadow-xs'
+              : 'bg-rose-500/90 text-white border-rose-400 shadow-xs'
           }`}>
             {feedbackMsg.text}
           </div>
         )}
 
-        {/* THE MATH PROBLEM CARD WITH TEKANAN UAP TIMER (TRANSLUCENT & FULLY RESPONSIVE) */}
-        <div className="p-3 sm:p-4 rounded-3xl border-2 bg-slate-950/45 border-cyan-400/40 shadow-[0_4px_25px_rgba(6,182,212,0.15)] flex flex-col items-center justify-center space-y-2 z-10 backdrop-blur-md w-full max-w-sm mx-auto">
+        {/* THE MATH PROBLEM CARD WITH TEKANAN UAP TIMER (PURE GLASSMORPHISM WITH CYAN NEON GLOW) */}
+        <div 
+          className="p-3 sm:p-4 rounded-3xl flex flex-col items-center justify-center space-y-2 z-10 w-full max-w-sm mx-auto"
+          style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 0 25px rgba(6, 182, 212, 0.35), inset 0 0 15px rgba(6, 182, 212, 0.15)'
+          }}
+        >
           <div className="flex items-center justify-center gap-2">
-            <span className="text-[10px] uppercase font-bold text-slate-400">Pecahkan Soal Cepat:</span>
-            <div className="font-mono-math font-black text-2xl sm:text-3xl text-cyan-400 tracking-wider">
+            <span className="text-[10px] uppercase font-bold text-cyan-200/90">Pecahkan Soal Cepat:</span>
+            <div className="font-mono-math font-black text-2xl sm:text-3xl text-cyan-300 tracking-wider drop-shadow-[0_0_12px_rgba(6,182,212,0.8)]">
               {currentQuestion.questionText.includes('= ?') ? currentQuestion.questionText : `${currentQuestion.questionText} = ?`}
             </div>
           </div>
@@ -693,21 +686,21 @@ export const DemonTrainMiniGame: React.FC = () => {
           {/* TEKANAN UAP: DYNAMIC STEAM PRESSURE TIMER (20 Detik) */}
           <div className="w-full space-y-1">
             <div className="flex items-center justify-between text-[10px] font-bold px-0.5">
-              <span className="flex items-center gap-1 text-cyan-400">
-                <Gauge className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+              <span className="flex items-center gap-1 text-cyan-300 drop-shadow-[0_0_6px_#22d3ee]">
+                <Gauge className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Tekanan Uap Kereta</span>
               </span>
-              <span className={`font-mono-math ${steamPressure <= 5 ? 'text-rose-500 font-black animate-pulse' : 'text-cyan-300 font-bold'}`}>
+              <span className={`font-mono-math ${steamPressure <= 5 ? 'text-rose-400 font-black animate-pulse' : 'text-cyan-300'}`}>
                 {steamPressure.toFixed(1)}s
               </span>
             </div>
 
             {/* Steam Pressure Gauge Bar */}
-            <div className="relative w-full h-3.5 rounded-full bg-slate-950/80 p-0.5 border border-cyan-500/40 overflow-visible">
+            <div className="relative w-full h-3 rounded-full bg-slate-950/70 p-0.5 border border-cyan-500/40 overflow-visible shadow-[0_0_10px_rgba(6,182,212,0.2)]">
               <div 
                 className={`h-full rounded-full transition-all duration-100 ${
                   steamPressure > 10
-                    ? 'bg-gradient-to-r from-cyan-500 via-teal-400 to-sky-300'
+                    ? 'bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400'
                     : steamPressure > 5
                     ? 'bg-gradient-to-r from-amber-500 to-orange-400'
                     : 'bg-gradient-to-r from-rose-600 to-red-500 animate-pulse'
@@ -727,7 +720,7 @@ export const DemonTrainMiniGame: React.FC = () => {
             </div>
           </div>
 
-          {/* Form with Autofocus input and Tebas! button (NEVER CUT OFF ON MOBILE) */}
+          {/* Form with input and Tebas! button */}
           <form 
             onSubmit={(e) => {
               e.preventDefault();
@@ -738,20 +731,54 @@ export const DemonTrainMiniGame: React.FC = () => {
             <input
               ref={inputRef}
               type="number"
-              inputMode="numeric"
+              inputMode={useNativeKeyboard ? 'numeric' : 'none'}
+              readOnly={!useNativeKeyboard}
               pattern="[0-9]*"
-              autoFocus
               value={userInput}
               onChange={e => setUserInput(e.target.value)}
               placeholder="Jawaban..."
               disabled={isGameOver || isSlashing || isDemonAttacking || isTimerPaused}
-              className="flex-1 min-w-0 px-3 py-2 text-center font-mono-math font-black text-lg sm:text-xl rounded-2xl border-2 bg-slate-950/60 border-cyan-400/80 text-white focus:ring-2 focus:ring-cyan-400 transition-all outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              onClick={() => {
+                if (!useNativeKeyboard) {
+                  inputRef.current?.blur();
+                }
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.12)',
+                border: '1.5px solid rgba(6, 182, 212, 0.6)',
+                boxShadow: '0 0 15px rgba(6, 182, 212, 0.25)'
+              }}
+              className="flex-1 min-w-0 px-3 py-2 text-center font-mono-math font-black text-lg sm:text-xl rounded-2xl text-cyan-200 focus:ring-2 focus:ring-cyan-400 transition-all outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none cursor-default backdrop-blur-md"
             />
+
+            {/* Keyboard HP Toggle Button */}
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                const nextVal = !useNativeKeyboard;
+                setUseNativeKeyboard(nextVal);
+                if (nextVal) {
+                  setTimeout(() => inputRef.current?.focus(), 100);
+                } else {
+                  inputRef.current?.blur();
+                }
+              }}
+              style={{
+                background: useNativeKeyboard ? 'rgba(6, 182, 212, 0.3)' : 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                boxShadow: '0 0 10px rgba(6, 182, 212, 0.2)'
+              }}
+              className="shrink-0 p-2.5 rounded-2xl flex items-center justify-center gap-1 font-bold text-xs text-cyan-300 transition-all cursor-pointer backdrop-blur-md"
+              title={useNativeKeyboard ? 'Sembunyikan Keyboard HP' : 'Tampilkan Keyboard HP'}
+            >
+              <Keyboard className="w-4 h-4 shrink-0" />
+            </button>
 
             <button
               type="submit"
               disabled={isGameOver || isSlashing || isDemonAttacking || isTimerPaused}
-              className="shrink-0 px-3.5 sm:px-5 py-2.5 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-md flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform whitespace-nowrap"
+              className="shrink-0 px-3.5 sm:px-5 py-2.5 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.5)] flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform whitespace-nowrap"
             >
               <Swords className="w-4 h-4 shrink-0" />
               <span>Tebas! ⚔️</span>
@@ -759,7 +786,7 @@ export const DemonTrainMiniGame: React.FC = () => {
           </form>
         </div>
 
-        {/* ON-SCREEN NUMPAD (TRANSLUCENT) */}
+        {/* ON-SCREEN NUMPAD (PURE GLASSMORPHISM WITH CYAN NEON ACCENTS) */}
         {showTouchKeypad && (
           <div className="w-full max-w-xs mx-auto pt-0.5 pb-0.5 z-10">
             <div className="grid grid-cols-4 gap-1.5">
@@ -768,12 +795,19 @@ export const DemonTrainMiniGame: React.FC = () => {
                   key={key}
                   type="button"
                   onClick={() => handleKeypadPress(key)}
-                  className={`py-2 rounded-xl font-mono-math font-bold text-sm sm:text-base border transition-all cursor-pointer active:scale-90 ${
+                  style={{
+                    background: key === 'C' ? 'rgba(244, 63, 94, 0.25)' : key === 'DEL' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    boxShadow: key === 'C' ? '0 0 12px rgba(244, 63, 94, 0.3)' : '0 0 10px rgba(6, 182, 212, 0.18)'
+                  }}
+                  className={`py-2 rounded-xl font-mono-math font-bold text-sm sm:text-base transition-all cursor-pointer active:scale-90 ${
                     key === 'C'
-                      ? 'bg-rose-950/60 border-rose-500/70 text-rose-300'
+                      ? 'text-rose-200'
                       : key === 'DEL'
-                      ? 'bg-cyan-950/60 border-cyan-500/70 text-cyan-300'
-                      : 'bg-slate-950/45 hover:bg-slate-900/60 border-slate-800/60 text-slate-100 shadow-2xs backdrop-blur-xs'
+                      ? 'text-amber-200'
+                      : 'text-cyan-100 hover:text-white'
                   }`}
                 >
                   {key === 'DEL' ? '⌫' : key}
